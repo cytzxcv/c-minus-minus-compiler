@@ -1,7 +1,28 @@
+#pragma once
+
+#include <cstdint>
+#include <string_view>
+
 enum class TokenType {
-    Return, Typedef, If, Else, Int, Float, For, Struct, Union, Void, While,
+    Return, Typedef, Struct, Union,
+    If, Else, For, While,
+    Int, Float, Void,
     Integer, Floating, String, Identifier,
-    Plus, Minus, Multiply, Divide, Lesser, Greater, GreaterEqual, LesserEqual, NotEqual, Equal,
-    LogicalOr, LogicalAnd, LogicalNot, Assign, Semicolon, Comma, Dot,
-    LeftParen, RightParen, LeftBracket, RightBracket, LeftBrace, RightBrace
+    Plus, Minus, Multiply, Divide,
+    Greater, Lesser, GreaterEqual, LesserEqual, Equal, NotEqual, 
+    LogicalOr, LogicalAnd, LogicalNot,
+    Assign,
+    Semicolon, Comma, Dot,
+    LeftParen, RightParen, LeftBracket, RightBracket, LeftBrace, RightBrace,
+    Eof
+};
+
+class Token {
+public: 
+    TokenType type;
+    std::string_view lexeme;
+    std::uint64_t line, column;
+
+    Token(TokenType type, std::string_view lexeme, std::uint64_t line, std::uint64_t column) :
+        type(type), lexeme(lexeme), line(line), column(column) { }
 };
