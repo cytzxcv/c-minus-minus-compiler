@@ -1,20 +1,24 @@
-.PHONY: all clean build run
+.PHONY: build run clean
 .SILENT:
 
-all: bin/cmmc
+SRCS = $(wildcard src/*.cpp)
+OBJS = $(SRCS:src/%.cpp=obj/%.o)
 
-bin/cmmc: obj/main.o
-	mkdir -p bin
-	g++ -std=c++23 $^ -o $@
-
-obj/main.o: src/main.cpp
-	mkdir -p obj
-	g++ -std=c++23 -c $< -o $@
+CXX=g++
+CXXFLAG=-std=c++23 -Iinc -O2 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wconversion -Wold-style-cast
 
 build: bin/cmmc
 
 run: bin/cmmc
 	./bin/cmmc
+
+bin/cmmc: $(OBJS)
+	mkdir -p bin
+	$(CXX) $(CXXFLAG) $^ -o $@
+
+obj/%.o: src/%.cpp
+	mkdir -p obj
+	$(CXX) $(CXXFLAG) -c $< -o $@
 
 clean:
 	rm -rf bin/ obj/
