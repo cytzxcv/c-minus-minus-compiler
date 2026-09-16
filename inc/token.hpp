@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string_view>
 
+// clang-format off
 enum class TokenType {
     Return, Typedef, Struct, Union,
     If, Else, For, While,
@@ -16,13 +17,14 @@ enum class TokenType {
     LeftParen, RightParen, LeftBracket, RightBracket, LeftBrace, RightBrace,
     Eof
 };
+// clang-format on
 
 class Token {
-public: 
+public:
     TokenType type;
     std::string_view lexeme;
     std::uint64_t line, column;
 
-    Token(TokenType type, std::string_view lexeme, std::uint64_t line, std::uint64_t column) :
-        type(type), lexeme(lexeme), line(line), column(column) { }
+    Token(TokenType type, std::string_view lexeme, std::uint64_t line, std::uint64_t column)
+        : type(type), lexeme(lexeme), line(line), column(column) { }
 };
