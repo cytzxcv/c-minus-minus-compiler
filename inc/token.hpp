@@ -15,7 +15,7 @@ enum class TokenType {
     Assign,
     Semicolon, Comma, Dot,
     LeftParen, RightParen, LeftBracket, RightBracket, LeftBrace, RightBrace,
-    Eof
+    Eof, Err
 };
 // clang-format on
 
