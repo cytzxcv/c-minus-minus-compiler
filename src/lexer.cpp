@@ -2,19 +2,20 @@
 #include "token.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
-auto Lexer::next() -> Token {
+auto Lexer::next_token() -> Token {
     std::expected<void, Token> result = skip_ignored();
     if (!result.has_value()) {
         return result.error();
     }
 
     if (pos >= source.length()) {
-        return Token(TokenType::Eof, std::string_view(source).substr(0, 0), line, column);
+        return make_err();
     }
 
-    char current = source[pos];
+    char current = peek();
 
     if (current == '\"') {
         return str();
@@ -28,8 +29,24 @@ auto Lexer::next() -> Token {
     return oper();
 }
 
+auto Lexer::make_token(TokenType type, std::uint64_t len) -> Token {
+    return Token(type, std::string_view(source).substr(pos, len), line, column);
+}
+
+auto Lexer::make_err() -> Token {
+    return Token(TokenType::Err, std::string_view(source).substr(0, 0), line, column);
+}
+
+auto Lexer::peek() -> char {
+    return source[pos];
+}
+
+auto Lexer::peek_next() -> char {
+    return source[pos + 1];
+}
+
 auto Lexer::advance() -> void {
-    if (source[pos] == '\n') {
+    if (peek() == '\n') {
         column = 1;
         line++;
     }
@@ -40,40 +57,48 @@ auto Lexer::advance() -> void {
 }
 
 auto Lexer::skip_single() -> void {
-    while (pos < source.length() && source[pos] != '\n') {
+    while (pos < source.length() && peek() != '\n') {
         advance();
     }
 }
 
 auto Lexer::skip_multi() -> std::expected<void, Token> {
-    while (pos + 1 < source.length() && !(source[pos] == '*' && source[pos + 1] == '/')) {
+    bool properly_ended = false;
+
+    while (pos < source.length()) {
+        if (pos + 1 < source.length() && peek() == '*' && peek_next() == '/') {
+            advance();
+            advance();
+            properly_ended = true;
+            break;
+        }
         advance();
     }
 
-    if (pos >= source.length()) {
-        return std::unexpected(Token(TokenType::Err, std::string_view(source).substr(0, 0), line, column));
+    if (properly_ended) {
+        return {};
     }
 
-    return {};
+    return std::unexpected(make_err());
 }
 
 auto Lexer::skip_ignored() -> std::expected<void, Token> {
-    uint64_t source_len = source.length();
+    std::uint64_t source_len = source.length();
 
     while (true) {
         if (pos >= source_len) {
             break;
         }
 
-        while (pos < source_len && is_white(source[pos])) {
+        while (pos < source_len && is_white(peek())) {
             advance();
         }
 
-        if (pos + 1 < source_len && source[pos] == '/' && source[pos + 1] == '/') {
+        if (pos + 1 < source_len && peek() == '/' && peek_next() == '/') {
             skip_single();
             continue;
         }
-        else if (pos + 1 < source_len && source[pos] == '/' && source[pos + 1] == '*') {
+        else if (pos + 1 < source_len && peek() == '/' && peek_next() == '*') {
             std::expected<void, Token> result = skip_multi();
             if (!result.has_value()) {
                 return result;
@@ -101,4 +126,111 @@ auto Lexer::is_num(char c) -> bool {
 
 auto Lexer::is_alnum(char c) -> bool {
     return is_alpha(c) || is_num(c);
+}
+
+auto Lexer::str() -> Token {
+    // todo
+}
+
+auto Lexer::num() -> Token {
+    // todo
+}
+
+auto Lexer::iden() -> Token {
+    // todo
+}
+
+auto Lexer::oper() -> Token {
+    std::optional<Token> return_token = std::nullopt;
+    std::uint64_t source_len = source.length();
+
+    switch (peek()) {
+    case '+':
+        return_token = make_token(TokenType::Plus, 1);
+        break;
+    case '-':
+        return_token = make_token(TokenType::Minus, 1);
+        break;
+    case '*':
+        return_token = make_token(TokenType::Multiply, 1);
+        break;
+    case '/':
+        return_token = make_token(TokenType::Divide, 1);
+        break;
+    case '<':
+        if (pos + 1 < source_len && peek_next() == '=') {
+            return_token = make_token(TokenType::LesserEqual, 2);
+            advance();
+        }
+        return_token = make_token(TokenType::Lesser, 1);
+        break;
+    case '>':
+        if (pos + 1 < source_len && peek_next() == '=') {
+            return_token = make_token(TokenType::GreaterEqual, 2);
+            advance();
+        }
+        return_token = make_token(TokenType::Greater, 1);
+        break;
+    case '!':
+        if (pos + 1 < source_len && peek_next() == '=') {
+            return_token = make_token(TokenType::NotEqual, 2);
+            advance();
+        }
+        return_token = make_token(TokenType::LogicalNot, 1);
+        break;
+    case '=':
+        if (pos + 1 < source_len && peek_next() == '=') {
+            return_token = make_token(TokenType::Equal, 2);
+            advance();
+        }
+        return_token = make_token(TokenType::Assign, 1);
+        break;
+    case '|':
+        if (pos + 1 < source_len && peek_next() == '|') {
+            return_token = make_token(TokenType::LogicalOr, 2);
+            advance();
+        }
+        return_token = make_err();
+        break;
+    case '&':
+        if (pos + 1 < source_len && peek_next() == '&') {
+            return_token = make_token(TokenType::LogicalAnd, 2);
+            advance();
+        }
+        return_token = make_err();
+        break;
+    case '{':
+        return_token = make_token(TokenType::LeftBrace, 1);
+        break;
+    case '}':
+        return_token = make_token(TokenType::RightBrace, 1);
+        break;
+    case '[':
+        return_token = make_token(TokenType::LeftBracket, 1);
+        break;
+    case ']':
+        return_token = make_token(TokenType::RightBracket, 1);
+        break;
+    case '(':
+        return_token = make_token(TokenType::LeftParen, 1);
+        break;
+    case ')':
+        return_token = make_token(TokenType::RightParen, 1);
+        break;
+    case ';':
+        return_token = make_token(TokenType::Semicolon, 1);
+        break;
+    case ',':
+        return_token = make_token(TokenType::Comma, 1);
+        break;
+    case '.':
+        return_token = make_token(TokenType::Dot, 1);
+        break;
+    default:
+        return_token = make_err();
+        break;
+    }
+
+    advance();
+    return return_token.value();
 }
