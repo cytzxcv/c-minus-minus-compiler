@@ -15,7 +15,7 @@ auto Lexer::next_token() -> Token {
         return make_err();
     }
 
-    char current = peek();
+    char current = peek(0);
 
     if (current == '\"') {
         return str();
@@ -37,16 +37,12 @@ auto Lexer::make_err() -> Token {
     return Token(TokenType::Err, std::string_view(source).substr(0, 0), line, column);
 }
 
-auto Lexer::peek() -> char {
-    return source[pos];
-}
-
-auto Lexer::peek_next() -> char {
-    return source[pos + 1];
+auto Lexer::peek(std::uint64_t offset) -> char {
+    return source[pos + offset];
 }
 
 auto Lexer::advance() -> void {
-    if (peek() == '\n') {
+    if (peek(0) == '\n') {
         column = 1;
         line++;
     }
@@ -57,7 +53,7 @@ auto Lexer::advance() -> void {
 }
 
 auto Lexer::skip_single() -> void {
-    while (pos < source.length() && peek() != '\n') {
+    while (pos < source.length() && peek(0) != '\n') {
         advance();
     }
 }
@@ -66,7 +62,7 @@ auto Lexer::skip_multi() -> std::expected<void, Token> {
     bool properly_ended = false;
 
     while (pos < source.length()) {
-        if (pos + 1 < source.length() && peek() == '*' && peek_next() == '/') {
+        if (pos + 1 < source.length() && peek(0) == '*' && peek(1) == '/') {
             advance();
             advance();
             properly_ended = true;
@@ -90,15 +86,15 @@ auto Lexer::skip_ignored() -> std::expected<void, Token> {
             break;
         }
 
-        while (pos < source_len && is_white(peek())) {
+        while (pos < source_len && is_white(peek(0))) {
             advance();
         }
 
-        if (pos + 1 < source_len && peek() == '/' && peek_next() == '/') {
+        if (pos + 1 < source_len && peek(0) == '/' && peek(1) == '/') {
             skip_single();
             continue;
         }
-        else if (pos + 1 < source_len && peek() == '/' && peek_next() == '*') {
+        else if (pos + 1 < source_len && peek(0) == '/' && peek(1) == '*') {
             std::expected<void, Token> result = skip_multi();
             if (!result.has_value()) {
                 return result;
@@ -137,14 +133,60 @@ auto Lexer::num() -> Token {
 }
 
 auto Lexer::iden() -> Token {
-    // todo
+    std::optional<Token> return_token = std::nullopt;
+    std::uint64_t offset = 0;
+
+    while (pos + offset < source.length() && is_alnum(peek(offset))) {
+        offset++;
+    }
+
+    std::string_view iden = std::string_view(source).substr(pos, offset);
+
+    if (iden == "return") {
+        return_token = make_token(TokenType::Return, offset);
+    }
+    else if (iden == "typedef") {
+        return_token = make_token(TokenType::Typedef, offset);
+    }
+    else if (iden == "if") {
+        return_token = make_token(TokenType::If, offset);
+    }
+    else if (iden == "else") {
+        return_token = make_token(TokenType::Else, offset);
+    }
+    else if (iden == "int") {
+        return_token = make_token(TokenType::Int, offset);
+    }
+    else if (iden == "float") {
+        return_token = make_token(TokenType::Float, offset);
+    }
+    else if (iden == "for") {
+        return_token = make_token(TokenType::For, offset);
+    }
+    else if (iden == "struct") {
+        return_token = make_token(TokenType::Struct, offset);
+    }
+    else if (iden == "union") {
+        return_token = make_token(TokenType::Union, offset);
+    }
+    else if (iden == "void") {
+        return_token = make_token(TokenType::Void, offset);
+    }
+    else if (iden == "while") {
+        return_token = make_token(TokenType::While, offset);
+    }
+
+    for (std::uint64_t i = 0; i < offset; i++) {
+        advance();
+    }
+    return return_token.value();
 }
 
 auto Lexer::oper() -> Token {
     std::optional<Token> return_token = std::nullopt;
     std::uint64_t source_len = source.length();
 
-    switch (peek()) {
+    switch (peek(0)) {
     case '+':
         return_token = make_token(TokenType::Plus, 1);
         break;
@@ -158,42 +200,42 @@ auto Lexer::oper() -> Token {
         return_token = make_token(TokenType::Divide, 1);
         break;
     case '<':
-        if (pos + 1 < source_len && peek_next() == '=') {
+        if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::LesserEqual, 2);
             advance();
         }
         return_token = make_token(TokenType::Lesser, 1);
         break;
     case '>':
-        if (pos + 1 < source_len && peek_next() == '=') {
+        if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::GreaterEqual, 2);
             advance();
         }
         return_token = make_token(TokenType::Greater, 1);
         break;
     case '!':
-        if (pos + 1 < source_len && peek_next() == '=') {
+        if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::NotEqual, 2);
             advance();
         }
         return_token = make_token(TokenType::LogicalNot, 1);
         break;
     case '=':
-        if (pos + 1 < source_len && peek_next() == '=') {
+        if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::Equal, 2);
             advance();
         }
         return_token = make_token(TokenType::Assign, 1);
         break;
     case '|':
-        if (pos + 1 < source_len && peek_next() == '|') {
+        if (pos + 1 < source_len && peek(1) == '|') {
             return_token = make_token(TokenType::LogicalOr, 2);
             advance();
         }
         return_token = make_err();
         break;
     case '&':
-        if (pos + 1 < source_len && peek_next() == '&') {
+        if (pos + 1 < source_len && peek(1) == '&') {
             return_token = make_token(TokenType::LogicalAnd, 2);
             advance();
         }

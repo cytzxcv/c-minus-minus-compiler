@@ -14,8 +14,7 @@ private:
     auto make_token(TokenType, std::uint64_t) -> Token;
     auto make_err() -> Token;
 
-    auto peek() -> char;
-    auto peek_next() -> char;
+    auto peek(std::uint64_t) -> char;
     auto advance() -> void;
 
     auto skip_single() -> void;
