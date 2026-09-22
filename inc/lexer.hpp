@@ -8,10 +8,12 @@
 
 class Lexer {
 private:
-    std::string source;
+    std::string source, error;
     std::uint64_t pos, line, column;
+    bool has_error;
 
     auto make_token(TokenType, std::uint64_t) -> Token;
+    auto make_error() -> Token;
 
     auto peek(std::uint64_t) -> char;
     auto advance() -> void;

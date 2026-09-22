@@ -2,12 +2,17 @@
 #include "token.hpp"
 
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <string_view>
 
-Lexer::Lexer(std::string source_) : source(source_), pos(0), line(1), column(1) { }
+Lexer::Lexer(std::string source_) : source(source_), error(""), pos(0), line(1), column(1), has_error(false) { }
 
 auto Lexer::next_token() -> Token {
+    if (has_error) {
+        return make_error();
+    }
+
     std::expected<void, Token> result = skip_ignored();
     if (!result.has_value()) {
         return result.error();
@@ -33,6 +38,10 @@ auto Lexer::next_token() -> Token {
 
 auto Lexer::make_token(TokenType type, std::uint64_t len) -> Token {
     return Token(type, std::string_view(source).substr(pos, len), line, column);
+}
+
+auto Lexer::make_error() -> Token {
+    return Token(TokenType::Err, std::string_view(error), line, column);
 }
 
 auto Lexer::peek(std::uint64_t offset) -> char {
@@ -73,7 +82,9 @@ auto Lexer::skip_multi() -> std::expected<void, Token> {
         return {};
     }
 
-    return std::unexpected(make_token(TokenType::Err, 0));
+    has_error = true;
+    error = std::format("Unterminated comment at {}:{}", line, column);
+    return std::unexpected(make_error());
 }
 
 auto Lexer::skip_ignored() -> std::expected<void, Token> {
@@ -128,7 +139,10 @@ auto Lexer::str() -> Token {
     bool properly_ended = false;
 
     while (pos + offset < source.length()) {
-        if (!escaping && peek(offset) == '\"') {
+        if (!escaping && peek(offset) == '\n') {
+            break;
+        }
+        else if (!escaping && peek(offset) == '\"') {
             properly_ended = true;
             break;
         }
@@ -144,7 +158,9 @@ auto Lexer::str() -> Token {
 
         char c = peek(offset);
         if (!(c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\'' || c == '\"' || c == 'a')) {
-            return make_token(TokenType::Err, 0);
+            has_error = true;
+            error = std::format("Invalid escape sequence at {}:{}", line, column);
+            return make_error();
         }
         escaping = false;
 
@@ -152,7 +168,9 @@ auto Lexer::str() -> Token {
     }
 
     if (!properly_ended) {
-        return make_token(TokenType::Err, 0);
+        has_error = true;
+        error = std::format("Unterminated string at {}:{}", line, column);
+        return make_error();
     }
 
     offset++;
@@ -304,7 +322,9 @@ auto Lexer::oper() -> Token {
             advance();
             break;
         }
-        return_token = make_token(TokenType::Err, 0);
+        has_error = true;
+        error = std::format("Unknown operator at {}:{}", line, column);
+        return make_error();
         break;
     case '&':
         if (pos + 1 < source_len && peek(1) == '&') {
@@ -312,7 +332,9 @@ auto Lexer::oper() -> Token {
             advance();
             break;
         }
-        return_token = make_token(TokenType::Err, 0);
+        has_error = true;
+        error = std::format("Unknown operator at {}:{}", line, column);
+        return make_error();
         break;
     case '{':
         return_token = make_token(TokenType::LeftBrace, 1);
@@ -342,7 +364,9 @@ auto Lexer::oper() -> Token {
         return_token = make_token(TokenType::Dot, 1);
         break;
     default:
-        return_token = make_token(TokenType::Err, 0);
+        has_error = true;
+        error = std::format("Unknown operator at {}:{}", line, column);
+        return make_error();
         break;
     }
 

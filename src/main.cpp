@@ -36,8 +36,13 @@ auto main(int argc, char **argv) -> int {
     Lexer lexer = Lexer(file_content);
     while (true) {
         Token token = lexer.next_token();
+        if (token.type == TokenType::Err) {
+            std::println(stderr, "Lexer error: {}", token.lexeme);
+            break;
+        }
+
         token.print();
-        if (token.type == TokenType::Eof || token.type == TokenType::Err) {
+        if (token.type == TokenType::Eof) {
             break;
         }
     }
