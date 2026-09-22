@@ -5,6 +5,8 @@
 #include <optional>
 #include <string_view>
 
+Lexer::Lexer(std::string source_) : source(source_), pos(0), line(1), column(1) { }
+
 auto Lexer::next_token() -> Token {
     std::expected<void, Token> result = skip_ignored();
     if (!result.has_value()) {
@@ -12,7 +14,7 @@ auto Lexer::next_token() -> Token {
     }
 
     if (pos >= source.length()) {
-        return make_err();
+        return make_token(TokenType::Eof, 0);
     }
 
     char current = peek(0);
@@ -31,10 +33,6 @@ auto Lexer::next_token() -> Token {
 
 auto Lexer::make_token(TokenType type, std::uint64_t len) -> Token {
     return Token(type, std::string_view(source).substr(pos, len), line, column);
-}
-
-auto Lexer::make_err() -> Token {
-    return Token(TokenType::Err, std::string_view(source).substr(0, 0), line, column);
 }
 
 auto Lexer::peek(std::uint64_t offset) -> char {
@@ -75,7 +73,7 @@ auto Lexer::skip_multi() -> std::expected<void, Token> {
         return {};
     }
 
-    return std::unexpected(make_err());
+    return std::unexpected(make_token(TokenType::Err, 0));
 }
 
 auto Lexer::skip_ignored() -> std::expected<void, Token> {
@@ -125,30 +123,39 @@ auto Lexer::is_alnum(char c) -> bool {
 }
 
 auto Lexer::str() -> Token {
-    std::uint64_t offset = 0;
+    std::uint64_t offset = 1;
     bool escaping = false;
+    bool properly_ended = false;
 
     while (pos + offset < source.length()) {
-        offset++;
-
         if (!escaping && peek(offset) == '\"') {
+            properly_ended = true;
             break;
         }
         else if (!escaping && peek(offset) == '\\') {
             escaping = true;
+            offset++;
             continue;
         }
         else if (!escaping) {
+            offset++;
             continue;
         }
 
         char c = peek(offset);
         if (!(c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\'' || c == '\"' || c == 'a')) {
-            return make_err();
+            return make_token(TokenType::Err, 0);
         }
         escaping = false;
+
+        offset++;
     }
 
+    if (!properly_ended) {
+        return make_token(TokenType::Err, 0);
+    }
+
+    offset++;
     Token return_token = make_token(TokenType::String, offset);
     for (std::uint64_t i = 0; i < offset; i++) {
         advance();
@@ -157,12 +164,41 @@ auto Lexer::str() -> Token {
 }
 
 auto Lexer::num() -> Token {
-    // todo
+    std::optional<Token> return_token = std::nullopt;
+    std::uint64_t offset = 1;
+    std::uint64_t source_len = source.length();
+    bool is_float = false;
+
+    while (pos + offset < source_len && is_num(peek(offset))) {
+        offset++;
+    }
+
+    if (pos + offset < source_len && peek(offset) == '.') {
+        is_float = true;
+
+        offset++;
+        while (pos + offset < source_len && is_num(peek(offset))) {
+            offset++;
+        }
+    }
+
+    if (is_float) {
+        return_token = make_token(TokenType::Floating, offset);
+    }
+    else {
+        return_token = make_token(TokenType::Integer, offset);
+    }
+
+    for (std::uint64_t i = 0; i < offset; i++) {
+        advance();
+    }
+
+    return return_token.value();
 }
 
 auto Lexer::iden() -> Token {
     std::optional<Token> return_token = std::nullopt;
-    std::uint64_t offset = 0;
+    std::uint64_t offset = 1;
 
     while (pos + offset < source.length() && is_alnum(peek(offset))) {
         offset++;
@@ -204,7 +240,7 @@ auto Lexer::iden() -> Token {
         return_token = make_token(TokenType::While, offset);
     }
     else {
-        return_token = make_token(TokenType::Int, offset);
+        return_token = make_token(TokenType::Identifier, offset);
     }
 
     for (std::uint64_t i = 0; i < offset; i++) {
@@ -234,6 +270,7 @@ auto Lexer::oper() -> Token {
         if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::LesserEqual, 2);
             advance();
+            break;
         }
         return_token = make_token(TokenType::Lesser, 1);
         break;
@@ -241,6 +278,7 @@ auto Lexer::oper() -> Token {
         if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::GreaterEqual, 2);
             advance();
+            break;
         }
         return_token = make_token(TokenType::Greater, 1);
         break;
@@ -248,6 +286,7 @@ auto Lexer::oper() -> Token {
         if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::NotEqual, 2);
             advance();
+            break;
         }
         return_token = make_token(TokenType::LogicalNot, 1);
         break;
@@ -255,6 +294,7 @@ auto Lexer::oper() -> Token {
         if (pos + 1 < source_len && peek(1) == '=') {
             return_token = make_token(TokenType::Equal, 2);
             advance();
+            break;
         }
         return_token = make_token(TokenType::Assign, 1);
         break;
@@ -262,15 +302,17 @@ auto Lexer::oper() -> Token {
         if (pos + 1 < source_len && peek(1) == '|') {
             return_token = make_token(TokenType::LogicalOr, 2);
             advance();
+            break;
         }
-        return_token = make_err();
+        return_token = make_token(TokenType::Err, 0);
         break;
     case '&':
         if (pos + 1 < source_len && peek(1) == '&') {
             return_token = make_token(TokenType::LogicalAnd, 2);
             advance();
+            break;
         }
-        return_token = make_err();
+        return_token = make_token(TokenType::Err, 0);
         break;
     case '{':
         return_token = make_token(TokenType::LeftBrace, 1);
@@ -300,7 +342,7 @@ auto Lexer::oper() -> Token {
         return_token = make_token(TokenType::Dot, 1);
         break;
     default:
-        return_token = make_err();
+        return_token = make_token(TokenType::Err, 0);
         break;
     }
 

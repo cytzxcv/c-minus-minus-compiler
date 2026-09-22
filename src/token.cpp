@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <print>
 #include <string_view>
+#include <utility>
 
 constexpr std::string_view token_type_to_string(TokenType type) {
     switch (type) {
@@ -126,12 +127,14 @@ constexpr std::string_view token_type_to_string(TokenType type) {
     case TokenType::Err:
         return "Err";
         break;
+    default:
+        std::unreachable();
     }
 }
 
-Token::Token(TokenType type, std::string_view lexeme, std::uint64_t line, std::uint64_t column)
-    : type(type), lexeme(lexeme), line(line), column(column) { }
+Token::Token(TokenType type_, std::string_view lexeme_, std::uint64_t line_, std::uint64_t column_)
+    : type(type_), lexeme(lexeme_), line(line_), column(column_) { }
 
 auto Token::print() -> void {
-    std::print("Token({}, {}, {}, {})", token_type_to_string(type), lexeme, line, column);
+    std::println("Token({}, {:?}, {}, {})", token_type_to_string(type), lexeme, line, column);
 }

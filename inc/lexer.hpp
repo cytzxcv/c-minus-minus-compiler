@@ -12,7 +12,6 @@ private:
     std::uint64_t pos, line, column;
 
     auto make_token(TokenType, std::uint64_t) -> Token;
-    auto make_err() -> Token;
 
     auto peek(std::uint64_t) -> char;
     auto advance() -> void;
@@ -32,7 +31,7 @@ private:
     auto oper() -> Token;
 
 public:
-    Lexer(std::string source) : source(source), pos(0), line(1), column(1) { }
+    Lexer(std::string);
 
     auto next_token() -> Token;
 };

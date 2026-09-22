@@ -54,6 +54,6 @@ public:
     std::string_view lexeme;
     std::uint64_t line, column;
 
-    Token(TokenType type, std::string_view lexeme, std::uint64_t line, std::uint64_t column);
+    Token(TokenType, std::string_view, std::uint64_t, std::uint64_t);
     auto print() -> void;
 };
