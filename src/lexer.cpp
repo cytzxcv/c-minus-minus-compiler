@@ -125,7 +125,35 @@ auto Lexer::is_alnum(char c) -> bool {
 }
 
 auto Lexer::str() -> Token {
-    // todo
+    std::uint64_t offset = 0;
+    bool escaping = false;
+
+    while (pos + offset < source.length()) {
+        offset++;
+
+        if (!escaping && peek(offset) == '\"') {
+            break;
+        }
+        else if (!escaping && peek(offset) == '\\') {
+            escaping = true;
+            continue;
+        }
+        else if (!escaping) {
+            continue;
+        }
+
+        char c = peek(offset);
+        if (!(c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\'' || c == '\"' || c == 'a')) {
+            return make_err();
+        }
+        escaping = false;
+    }
+
+    Token return_token = make_token(TokenType::String, offset);
+    for (std::uint64_t i = 0; i < offset; i++) {
+        advance();
+    }
+    return return_token;
 }
 
 auto Lexer::num() -> Token {
@@ -174,6 +202,9 @@ auto Lexer::iden() -> Token {
     }
     else if (iden == "while") {
         return_token = make_token(TokenType::While, offset);
+    }
+    else {
+        return_token = make_token(TokenType::Int, offset);
     }
 
     for (std::uint64_t i = 0; i < offset; i++) {
