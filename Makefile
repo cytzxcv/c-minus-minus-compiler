@@ -9,9 +9,6 @@ CXXFLAG=-std=c++23 -Iinc -O2 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wconvers
 
 build: bin/cmmc
 
-run: bin/cmmc
-	./bin/cmmc
-
 bin/cmmc: $(OBJS)
 	mkdir -p bin
 	$(CXX) $(CXXFLAG) $^ -o $@
