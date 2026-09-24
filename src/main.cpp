@@ -26,7 +26,7 @@ auto main(int argc, char **argv) -> int {
     }
     else if (!file_stream.is_open()) {
         std::println(stderr, "Error: Failed to read {}", argv[0]);
-        return 3;
+        return 4;
     }
 
     std::stringstream buffer;
@@ -38,7 +38,7 @@ auto main(int argc, char **argv) -> int {
         Token token = lexer.next_token();
         if (token.type == TokenType::Err) {
             std::println(stderr, "Lexer error: {}", token.lexeme);
-            break;
+            return 5;
         }
 
         token.print();
@@ -46,4 +46,6 @@ auto main(int argc, char **argv) -> int {
             break;
         }
     }
+
+    return 0;
 }
