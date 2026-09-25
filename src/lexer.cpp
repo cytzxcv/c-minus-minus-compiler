@@ -3,12 +3,13 @@
 
 #include <cstdint>
 #include <format>
-#include <optional>
 #include <string_view>
 
 Lexer::Lexer(std::string source_) : source(source_), error(""), pos(0), line(1), column(1), has_error(false) { }
 
 auto Lexer::next_token() -> Token {
+    std::uint64_t source_len = source.length();
+
     if (has_error) {
         return make_error();
     }
@@ -18,7 +19,7 @@ auto Lexer::next_token() -> Token {
         return result.error();
     }
 
-    if (pos >= source.length()) {
+    if (pos >= source_len) {
         return make_token(TokenType::Eof, 0);
     }
 
@@ -27,7 +28,7 @@ auto Lexer::next_token() -> Token {
     if (current == '\"') {
         return str();
     }
-    else if (is_num(current)) {
+    else if ((current == '.' && pos + 1 < source_len && is_num(peek(1))) || is_num(current)) {
         return num();
     }
     else if (is_alpha(current)) {
@@ -41,6 +42,12 @@ auto Lexer::make_token(TokenType type, std::uint64_t len) -> Token {
 }
 
 auto Lexer::make_error() -> Token {
+    return Token(TokenType::Err, std::string_view(error), line, column);
+}
+
+auto Lexer::make_error(std::string error_message) -> Token {
+    has_error = true;
+    error = std::format("{} at {}:{}", error_message, line, column);
     return Token(TokenType::Err, std::string_view(error), line, column);
 }
 
@@ -59,6 +66,12 @@ auto Lexer::advance() -> void {
     pos++;
 }
 
+auto Lexer::advance(std::uint64_t length) -> void {
+    for (std::uint64_t i = 0; i < length; i++) {
+        advance();
+    }
+}
+
 auto Lexer::skip_single() -> void {
     while (pos < source.length() && peek(0) != '\n') {
         advance();
@@ -70,8 +83,7 @@ auto Lexer::skip_multi() -> std::expected<void, Token> {
 
     while (pos < source.length()) {
         if (pos + 1 < source.length() && peek(0) == '*' && peek(1) == '/') {
-            advance();
-            advance();
+            advance(2);
             properly_ended = true;
             break;
         }
@@ -82,9 +94,7 @@ auto Lexer::skip_multi() -> std::expected<void, Token> {
         return {};
     }
 
-    has_error = true;
-    error = std::format("Unterminated comment at {}:{}", line, column);
-    return std::unexpected(make_error());
+    return std::unexpected(make_error("Unterminated comment"));
 }
 
 auto Lexer::skip_ignored() -> std::expected<void, Token> {
@@ -158,9 +168,7 @@ auto Lexer::str() -> Token {
 
         char c = peek(offset);
         if (!(c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\'' || c == '\"' || c == 'a')) {
-            has_error = true;
-            error = std::format("Invalid escape sequence at {}:{}", line, column);
-            return make_error();
+            return make_error("Invalid escape sequence");
         }
         escaping = false;
 
@@ -168,54 +176,90 @@ auto Lexer::str() -> Token {
     }
 
     if (!properly_ended) {
-        has_error = true;
-        error = std::format("Unterminated string at {}:{}", line, column);
-        return make_error();
+        return make_error("Unterminated string");
     }
 
     offset++;
     Token return_token = make_token(TokenType::String, offset);
-    for (std::uint64_t i = 0; i < offset; i++) {
-        advance();
-    }
+    advance(offset);
     return return_token;
 }
 
 auto Lexer::num() -> Token {
-    std::optional<Token> return_token = std::nullopt;
     std::uint64_t offset = 1;
-    std::uint64_t source_len = source.length();
-    bool is_float = false;
+    std::uint64_t state = (peek(0) == '.');
+    bool is_float;
 
-    while (pos + offset < source_len && is_num(peek(offset))) {
-        offset++;
-    }
+    while (pos + offset < source.length()) {
+        char current = peek(offset);
 
-    if (pos + offset < source_len && peek(offset) == '.') {
-        is_float = true;
-
-        offset++;
-        while (pos + offset < source_len && is_num(peek(offset))) {
-            offset++;
+        if (state == 0 && is_white(current)) {
+            break;
         }
+        else if (state == 0 && current == '.') {
+            state = 1;
+        }
+        else if (state == 0 && (current == 'e' || current == 'E')) {
+            state = 2;
+        }
+        else if (state == 0 && !is_num(current)) {
+            return make_error("Invalid number");
+        }
+
+        else if (state == 1 && is_white(current)) {
+            break;
+        }
+        else if (state == 1 && (current == 'e' || current == 'E')) {
+            state = 2;
+        }
+        else if (state == 1 && !is_num(current)) {
+            return make_error("Invalid number");
+        }
+
+        else if (state == 2 && (current == '+' || current == '-')) {
+            state = 3;
+        }
+        else if (state == 2 && is_num(current)) {
+            state = 4;
+        }
+        else if (state == 2) {
+            return make_error("Invalid number");
+        }
+
+        else if (state == 3 && is_num(current)) {
+            state = 4;
+        }
+        else if (state == 3) {
+            return make_error("Invalid number");
+        }
+
+        else if (state == 4 && is_white(current)) {
+            break;
+        }
+        else if (state == 4 && !is_num(current)) {
+            return make_error("Invalid number");
+        }
+
+        offset++;
     }
 
-    if (is_float) {
-        return_token = make_token(TokenType::Floating, offset);
+    if (state == 0) {
+        is_float = false;
+    }
+    else if (state == 1 || state == 4) {
+        is_float = true;
     }
     else {
-        return_token = make_token(TokenType::Integer, offset);
+        return make_error("Invalid number");
     }
 
-    for (std::uint64_t i = 0; i < offset; i++) {
-        advance();
-    }
-
-    return return_token.value();
+    Token return_token = make_token(is_float ? TokenType::Float : TokenType::Integer, offset);
+    advance(offset);
+    return return_token;
 }
 
 auto Lexer::iden() -> Token {
-    std::optional<Token> return_token = std::nullopt;
+    TokenType return_type;
     std::uint64_t offset = 1;
 
     while (pos + offset < source.length() && is_alnum(peek(offset))) {
@@ -225,151 +269,146 @@ auto Lexer::iden() -> Token {
     std::string_view iden = std::string_view(source).substr(pos, offset);
 
     if (iden == "return") {
-        return_token = make_token(TokenType::Return, offset);
+        return_type = TokenType::Return;
     }
     else if (iden == "typedef") {
-        return_token = make_token(TokenType::Typedef, offset);
+        return_type = TokenType::Typedef;
     }
     else if (iden == "if") {
-        return_token = make_token(TokenType::If, offset);
+        return_type = TokenType::If;
     }
     else if (iden == "else") {
-        return_token = make_token(TokenType::Else, offset);
+        return_type = TokenType::Else;
     }
     else if (iden == "int") {
-        return_token = make_token(TokenType::Int, offset);
+        return_type = TokenType::Int;
     }
     else if (iden == "float") {
-        return_token = make_token(TokenType::Float, offset);
+        return_type = TokenType::Float;
     }
     else if (iden == "for") {
-        return_token = make_token(TokenType::For, offset);
+        return_type = TokenType::For;
     }
     else if (iden == "struct") {
-        return_token = make_token(TokenType::Struct, offset);
+        return_type = TokenType::Struct;
     }
     else if (iden == "union") {
-        return_token = make_token(TokenType::Union, offset);
+        return_type = TokenType::Union;
     }
     else if (iden == "void") {
-        return_token = make_token(TokenType::Void, offset);
+        return_type = TokenType::Void;
     }
     else if (iden == "while") {
-        return_token = make_token(TokenType::While, offset);
+        return_type = TokenType::While;
     }
     else {
-        return_token = make_token(TokenType::Identifier, offset);
+        return_type = TokenType::Identifier;
     }
 
-    for (std::uint64_t i = 0; i < offset; i++) {
-        advance();
-    }
-    return return_token.value();
+    Token return_token = make_token(return_type, offset);
+    advance(offset);
+    return return_token;
 }
 
 auto Lexer::oper() -> Token {
-    std::optional<Token> return_token = std::nullopt;
+    TokenType return_type;
     std::uint64_t source_len = source.length();
+    std::uint64_t offset = 1;
 
     switch (peek(0)) {
     case '+':
-        return_token = make_token(TokenType::Plus, 1);
+        return_type = TokenType::Plus;
         break;
     case '-':
-        return_token = make_token(TokenType::Minus, 1);
+        return_type = TokenType::Minus;
         break;
     case '*':
-        return_token = make_token(TokenType::Multiply, 1);
+        return_type = TokenType::Multiply;
         break;
     case '/':
-        return_token = make_token(TokenType::Divide, 1);
+        return_type = TokenType::Divide;
         break;
     case '<':
         if (pos + 1 < source_len && peek(1) == '=') {
-            return_token = make_token(TokenType::LesserEqual, 2);
-            advance();
+            return_type = TokenType::LesserEqual;
+            offset++;
             break;
         }
-        return_token = make_token(TokenType::Lesser, 1);
+        return_type = TokenType::Lesser;
         break;
     case '>':
         if (pos + 1 < source_len && peek(1) == '=') {
-            return_token = make_token(TokenType::GreaterEqual, 2);
-            advance();
+            return_type = TokenType::GreaterEqual;
+            offset++;
             break;
         }
-        return_token = make_token(TokenType::Greater, 1);
+        return_type = TokenType::Greater;
         break;
     case '!':
         if (pos + 1 < source_len && peek(1) == '=') {
-            return_token = make_token(TokenType::NotEqual, 2);
-            advance();
+            return_type = TokenType::NotEqual;
+            offset++;
             break;
         }
-        return_token = make_token(TokenType::LogicalNot, 1);
+        return_type = TokenType::LogicalNot;
         break;
     case '=':
         if (pos + 1 < source_len && peek(1) == '=') {
-            return_token = make_token(TokenType::Equal, 2);
-            advance();
+            return_type = TokenType::Equal;
+            offset++;
             break;
         }
-        return_token = make_token(TokenType::Assign, 1);
+        return_type = TokenType::Assign;
         break;
     case '|':
         if (pos + 1 < source_len && peek(1) == '|') {
-            return_token = make_token(TokenType::LogicalOr, 2);
-            advance();
+            return_type = TokenType::LogicalOr;
+            offset++;
             break;
         }
-        has_error = true;
-        error = std::format("Unknown operator at {}:{}", line, column);
-        return make_error();
+        return make_error("Unknown operator");
         break;
     case '&':
         if (pos + 1 < source_len && peek(1) == '&') {
-            return_token = make_token(TokenType::LogicalAnd, 2);
-            advance();
+            return_type = TokenType::LogicalAnd;
+            offset++;
             break;
         }
-        has_error = true;
-        error = std::format("Unknown operator at {}:{}", line, column);
-        return make_error();
+        return make_error("Unknown operator");
         break;
     case '{':
-        return_token = make_token(TokenType::LeftBrace, 1);
+        return_type = TokenType::LeftBrace;
         break;
     case '}':
-        return_token = make_token(TokenType::RightBrace, 1);
+        return_type = TokenType::RightBrace;
         break;
     case '[':
-        return_token = make_token(TokenType::LeftBracket, 1);
+        return_type = TokenType::LeftBracket;
         break;
     case ']':
-        return_token = make_token(TokenType::RightBracket, 1);
+        return_type = TokenType::RightBracket;
         break;
     case '(':
-        return_token = make_token(TokenType::LeftParen, 1);
+        return_type = TokenType::LeftParenthesis;
         break;
     case ')':
-        return_token = make_token(TokenType::RightParen, 1);
+        return_type = TokenType::RightParenthesis;
         break;
     case ';':
-        return_token = make_token(TokenType::Semicolon, 1);
+        return_type = TokenType::Semicolon;
         break;
     case ',':
-        return_token = make_token(TokenType::Comma, 1);
+        return_type = TokenType::Comma;
         break;
     case '.':
-        return_token = make_token(TokenType::Dot, 1);
+        return_type = TokenType::Dot;
         break;
     default:
-        has_error = true;
-        error = std::format("Unknown operator at {}:{}", line, column);
-        return make_error();
+        return make_error("Unknown operator");
         break;
     }
 
+    Token return_token = make_token(return_type, offset);
     advance();
-    return return_token.value();
+    return return_token;
 }

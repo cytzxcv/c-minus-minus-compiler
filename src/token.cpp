@@ -103,11 +103,11 @@ constexpr std::string_view token_type_to_string(TokenType type) {
     case TokenType::Dot:
         return "Dot";
         break;
-    case TokenType::LeftParen:
-        return "LeftParen";
+    case TokenType::LeftParenthesis:
+        return "LeftParenthesis";
         break;
-    case TokenType::RightParen:
-        return "RightParen";
+    case TokenType::RightParenthesis:
+        return "RightParenthesis";
         break;
     case TokenType::LeftBracket:
         return "LeftBracket";
