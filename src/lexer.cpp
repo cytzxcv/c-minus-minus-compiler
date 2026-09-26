@@ -186,7 +186,7 @@ auto Lexer::str() -> Token {
     return return_token;
 }
 
-// (([0-9]+)|(\.[0-9]+)|([0-9]+\.)|([0-9]+\.[0-9]+))((e|E)(\+|\-)?[0-9]+)?
+// ([0-9]+(\.[0-9]*)?|\.[0-9]+)((e|E)(\+|\-)?[0-9]+)?
 auto Lexer::num() -> Token {
     std::uint64_t offset = 1;
     std::uint64_t state = (peek(0) == '.');

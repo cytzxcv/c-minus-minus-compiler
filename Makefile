@@ -4,7 +4,7 @@
 SRCS = $(wildcard src/*.cpp)
 OBJS = $(SRCS:src/%.cpp=obj/%.o)
 
-CXX=g++
+CXX=clang++
 CXXFLAG=-std=c++23 -Iinc -O2 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wconversion -Wold-style-cast
 
 build: bin/cmmc
