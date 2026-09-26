@@ -143,6 +143,7 @@ auto Lexer::is_alnum(char c) -> bool {
     return is_alpha(c) || is_num(c);
 }
 
+// "([^\\"]|(\\n)|(\\t)|(\\r)|(\\\\)|(\\')|(\\")|(\\a))*"
 auto Lexer::str() -> Token {
     std::uint64_t offset = 1;
     bool escaping = false;
@@ -185,6 +186,7 @@ auto Lexer::str() -> Token {
     return return_token;
 }
 
+// (([0-9]+)|(\.[0-9]+)|([0-9]+\.)|([0-9]+\.[0-9]+))((e|E)(\+|\-)?[0-9]+)?
 auto Lexer::num() -> Token {
     std::uint64_t offset = 1;
     std::uint64_t state = (peek(0) == '.');
@@ -258,6 +260,7 @@ auto Lexer::num() -> Token {
     return return_token;
 }
 
+// [a-zA-Z_][a-zA-Z0-9_]*
 auto Lexer::iden() -> Token {
     TokenType return_type;
     std::uint64_t offset = 1;
@@ -310,6 +313,7 @@ auto Lexer::iden() -> Token {
     return return_token;
 }
 
+// (\+|\-|\*|\/|\|\||&&|{|}|\[|\]|\(|\)|;|,|\.)|((<|>|!|=)=?)
 auto Lexer::oper() -> Token {
     TokenType return_type;
     std::uint64_t source_len = source.length();
