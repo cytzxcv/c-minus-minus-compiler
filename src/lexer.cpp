@@ -204,7 +204,10 @@ auto Lexer::num() -> Token {
         else if (state == 0 && (current == 'e' || current == 'E')) {
             state = 2;
         }
-        else if (state == 0 && !is_num(current)) {
+        else if (state == 0 && !is_alpha(current)) {
+            break;
+        }
+        else if (state == 0) {
             return make_error("Invalid number");
         }
 
@@ -214,7 +217,10 @@ auto Lexer::num() -> Token {
         else if (state == 1 && (current == 'e' || current == 'E')) {
             state = 2;
         }
-        else if (state == 1 && !is_num(current)) {
+        else if (state == 1 && !is_alpha(current)) {
+            break;
+        }
+        else if (state == 1) {
             return make_error("Invalid number");
         }
 
@@ -235,7 +241,7 @@ auto Lexer::num() -> Token {
             return make_error("Invalid number");
         }
 
-        else if (state == 4 && is_white(current)) {
+        else if (state == 4 && (is_white(current) || !is_alpha(current))) {
             break;
         }
         else if (state == 4 && !is_num(current)) {

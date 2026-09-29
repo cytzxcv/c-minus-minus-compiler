@@ -136,5 +136,5 @@ Token::Token(TokenType type_, std::string_view lexeme_, std::uint64_t line_, std
     : type(type_), lexeme(lexeme_), line(line_), column(column_) { }
 
 auto Token::print() -> void {
-    std::println("Token({}, {:?}, {}, {})", token_type_to_string(type), lexeme, line, column);
+    std::println("{} at ({}, {}): {}", token_type_to_string(type), line, column, lexeme);
 }

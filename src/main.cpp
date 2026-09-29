@@ -17,15 +17,15 @@ auto main(int argc, char **argv) -> int {
     std::ifstream file_stream = file_path;
 
     if (!file_stream.is_open() && errno == ENOENT) {
-        std::println(stderr, "Error: {} does not exist.", argv[0]);
+        std::println(stderr, "Error: {} does not exist.", argv[1]);
         return 2;
     }
     else if (!file_stream.is_open() && errno == EACCES) {
-        std::println(stderr, "Error: {} does not have reading permission.", argv[0]);
+        std::println(stderr, "Error: {} does not have reading permission.", argv[1]);
         return 3;
     }
     else if (!file_stream.is_open()) {
-        std::println(stderr, "Error: Failed to read {}", argv[0]);
+        std::println(stderr, "Error: Failed to read {}", argv[1]);
         return 4;
     }
 
@@ -41,10 +41,12 @@ auto main(int argc, char **argv) -> int {
             return 5;
         }
 
-        token.print();
         if (token.type == TokenType::Eof) {
+            std::println("Total number of lines: {}", token.line);
             break;
         }
+
+        token.print();
     }
 
     return 0;
