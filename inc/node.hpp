@@ -1,99 +1,143 @@
 #pragma once
 
-#include "token.hpp"
-
 #include <memory>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
-class Declaration {
+enum class ValType {
+    Int,
+    Flt,
+};
+
+enum class OpType {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Lt,
+    Gt,
+    Leq,
+    Geq,
+    Eq,
+    Neq,
+    Or,
+    And,
+    Not,
+    Mov,
+};
+
+class Decl {
 public:
-    virtual ~Declaration() = default;
+    using Ptr = std::unique_ptr<Decl>;
+
+    virtual ~Decl() = default;
 };
 
-class Statement {
+class Stmt {
 public:
-    virtual ~Statement() = default;
+    using Ptr = std::unique_ptr<Stmt>;
+
+    virtual ~Stmt() = default;
 };
 
-class Expression {
+class Expr {
 public:
-    virtual ~Expression() = default;
+    using Ptr = std::unique_ptr<Expr>;
+
+    virtual ~Expr() = default;
 };
 
-class Assignable : public Expression {
+class LValue : public Expr {
+public:
+    using Ptr = std::unique_ptr<LValue>;
+
     std::string name;
-    std::vector<std::unique_ptr<Expression>> dim;
+    std::vector<Expr::Ptr> dims;
 
-    Assignable(std::string);
+    LValue(std::string);
 };
 
-class FunctionDeclaration : public Declaration {
-    Token type; // int, float
+class FuncDecl : public Decl {
+public:
+    ValType type;
     std::string name;
-    std::vector<std::unique_ptr<Assignable>> parem;
-    std::vector<std::unique_ptr<Statement>> stmts;
+    std::vector<LValue::Ptr> parems;
+    std::vector<Stmt::Ptr> stmts;
 
-    FunctionDeclaration(Token, std::string);
+    FuncDecl(ValType, std::string);
 };
 
-class VariableDeclaration : public Declaration, public Statement {
-    Token type; // int, float
-    std::string name;
-    std::unique_ptr<Expression> rhs;
+class VarDecl : public Decl, public Stmt {
+public:
+    ValType type;
+    std::vector<std::pair<LValue::Ptr, Expr::Ptr>> vars;
 
-    VariableDeclaration(Token, std::string, std::unique_ptr<Expression>);
+    VarDecl(ValType);
 };
 
-class ExpressionStatement : public Statement {
-    std::unique_ptr<Expression> expr;
+class ExprStmt : public Stmt {
+public:
+    Expr::Ptr expr;
 
-    ExpressionStatement(std::unique_ptr<Expression>);
+    ExprStmt(Expr::Ptr);
 };
 
-class BlockStatement : public Statement {
-    std::vector<std::unique_ptr<Statement>> block;
+class BlockStmt : public Stmt {
+public:
+    std::vector<Stmt::Ptr> stmts;
 
-    BlockStatement();
+    BlockStmt();
 };
 
-class IfStatement : public Statement {
-    std::unique_ptr<Expression> cond;
-    std::unique_ptr<Statement> if_branch, else_branch;
+class IfStmt : public Stmt {
+public:
+    Expr::Ptr cond;
+    Stmt::Ptr if_branch, else_branch;
 
-    IfStatement(std::unique_ptr<Expression>, std::unique_ptr<Statement>, std::unique_ptr<Statement>);
+    IfStmt(Expr::Ptr, Stmt::Ptr, Stmt::Ptr);
 };
 
-class ForStatement : public Statement {
-    std::unique_ptr<std::variant<VariableDeclaration, Expression>> init;
-    std::unique_ptr<Expression> cond, iter;
-    std::unique_ptr<Statement> stmt;
+class ForStmt : public Stmt {
+public:
+    using InitPtr = std::unique_ptr<std::variant<VarDecl, Expr>>;
 
-    ForStatement(std::unique_ptr<std::variant<VariableDeclaration, Expression>>, std::unique_ptr<Expression>,
-                 std::unique_ptr<Expression>, std::unique_ptr<Statement>);
+    InitPtr init;
+    Expr::Ptr cond, iter;
+    Stmt::Ptr stmt;
+
+    ForStmt(InitPtr, Expr::Ptr, Expr::Ptr, Stmt::Ptr);
 };
 
-class WhileStatement : public Statement {
-    std::unique_ptr<Expression> cond;
-    std::unique_ptr<Statement> stmt;
+class WhileStmt : public Stmt {
+public:
+    Expr::Ptr cond;
+    Stmt::Ptr stmt;
 
-    WhileStatement(std::unique_ptr<Expression>, std::unique_ptr<Statement>);
+    WhileStmt(Expr::Ptr, Stmt::Ptr);
 };
 
-class ConstantExpression : public Expression {
-    Token type; // int, float
+class ConstExpr : public Expr {
+public:
+    ValType type;
     std::string value;
 
-    ConstantExpression(Token, std::string);
+    ConstExpr(ValType, std::string);
 };
 
-class BinaryExpression : public Expression {
-    Token op;
-    std::unique_ptr<Expression> lhs, rhs;
+class BinExpr : public Expr {
+public:
+    OpType op;
+    Expr::Ptr lhs, rhs;
+
+    BinExpr(OpType, Expr::Ptr, Expr::Ptr);
 };
 
-class UnaryExpression : public Expression {
-    Token op;
-    std::unique_ptr<Expression> rhs;
+class UnaryExpr : public Expr {
+public:
+    OpType op;
+    Expr::Ptr rhs;
+
+    UnaryExpr(OpType, Expr::Ptr);
 };
