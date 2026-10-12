@@ -5,7 +5,7 @@
 #include <string_view>
 #include <utility>
 
-constexpr std::string_view token_type_to_string(TokenType type) {
+constexpr auto token_type_to_string(TokenType type) -> std::string_view {
     switch (type) {
     case TokenType::Return:
         return "Return";
@@ -137,4 +137,38 @@ Token::Token(TokenType type_, std::string_view lexeme_, std::uint64_t line_, std
 
 auto Token::print() -> void {
     std::println("{} at ({}, {}): {}", token_type_to_string(type), line, column, lexeme);
+}
+
+auto Token::is_value() -> bool {
+    switch (type) {
+    case TokenType::Integer:
+    case TokenType::Floating:
+    case TokenType::Identifier:
+        return true;
+        break;
+    default:
+        return false;
+    }
+}
+
+auto Token::is_oper() -> bool {
+    switch (type) {
+    case TokenType::Plus:
+    case TokenType::Minus:
+    case TokenType::Multiply:
+    case TokenType::Divide:
+    case TokenType::Greater:
+    case TokenType::Lesser:
+    case TokenType::GreaterEqual:
+    case TokenType::LesserEqual:
+    case TokenType::Equal:
+    case TokenType::NotEqual:
+    case TokenType::LogicalOr:
+    case TokenType::LogicalAnd:
+    case TokenType::LogicalNot:
+    case TokenType::Assign:
+        return true;
+    default:
+        return false;
+    }
 }

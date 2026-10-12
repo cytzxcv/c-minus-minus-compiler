@@ -56,4 +56,7 @@ public:
 
     Token(TokenType, std::string_view, std::uint64_t, std::uint64_t);
     auto print() -> void;
+
+    auto is_value() -> bool;
+    auto is_oper() -> bool;
 };

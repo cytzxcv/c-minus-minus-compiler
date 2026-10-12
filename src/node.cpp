@@ -1,11 +1,11 @@
 #include "node.hpp"
 
-#include <string>
+#include <string_view>
 #include <utility>
 
-LValue::LValue(std::string name_) : name(name_), dims{} { }
+LValue::LValue(std::string_view name_) : name(name_), dims{} { }
 
-FuncDecl::FuncDecl(ValType type_, std::string name_) : type(type_), name(name_), parems{}, stmts{} { }
+FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), parems{}, stmts{} { }
 
 VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
 
@@ -21,7 +21,7 @@ ForStmt::ForStmt(ForStmt::InitPtr init_, Expr::Ptr cond_, Expr::Ptr iter_, Stmt:
 
 WhileStmt::WhileStmt(Expr::Ptr cond_, Stmt::Ptr stmt_) : cond(std::move(cond_)), stmt(std::move(stmt_)) { }
 
-ConstExpr::ConstExpr(ValType type_, std::string value_) : type(type_), value(value_) { }
+ConstExpr::ConstExpr(ValType type_, std::string_view value_) : type(type_), value(value_) { }
 
 BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std::move(lhs_)), rhs(std::move(rhs_)) { }
 

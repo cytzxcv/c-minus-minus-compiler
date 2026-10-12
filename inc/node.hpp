@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -53,20 +53,20 @@ class LValue : public Expr {
 public:
     using Ptr = std::unique_ptr<LValue>;
 
-    std::string name;
+    std::string_view name;
     std::vector<Expr::Ptr> dims;
 
-    LValue(std::string);
+    LValue(std::string_view);
 };
 
 class FuncDecl : public Decl {
 public:
     ValType type;
-    std::string name;
+    std::string_view name;
     std::vector<LValue::Ptr> parems;
     std::vector<Stmt::Ptr> stmts;
 
-    FuncDecl(ValType, std::string);
+    FuncDecl(ValType, std::string_view);
 };
 
 class VarDecl : public Decl, public Stmt {
@@ -121,9 +121,9 @@ public:
 class ConstExpr : public Expr {
 public:
     ValType type;
-    std::string value;
+    std::string_view value;
 
-    ConstExpr(ValType, std::string);
+    ConstExpr(ValType, std::string_view);
 };
 
 class BinExpr : public Expr {
