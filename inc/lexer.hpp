@@ -29,10 +29,10 @@ private:
     auto is_num(char) -> bool;
     auto is_alnum(char) -> bool;
 
-    auto str() -> std::pair<Token, uint64_t>;
-    auto num() -> std::pair<Token, uint64_t>;
-    auto iden() -> std::pair<Token, uint64_t>;
-    auto oper() -> std::pair<Token, uint64_t>;
+    auto str() -> std::pair<Token, std::uint64_t>;
+    auto num() -> std::pair<Token, std::uint64_t>;
+    auto iden() -> std::pair<Token, std::uint64_t>;
+    auto oper() -> std::pair<Token, std::uint64_t>;
 
 public:
     bool has_error;

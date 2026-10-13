@@ -54,7 +54,7 @@ public:
     using Ptr = std::unique_ptr<Expr>;
 
     virtual ~Expr() = default;
-    virtual auto print(uint64_t indent = 0) -> void = 0;
+    virtual auto print(std::uint64_t indent = 0) -> void = 0;
 };
 
 class LValue : public Expr {
@@ -66,7 +66,7 @@ public:
 
     LValue(std::string_view);
 
-    auto print(uint64_t) -> void override;
+    auto print(std::uint64_t) -> void override;
 };
 
 class FuncDecl : public Decl {
@@ -135,7 +135,7 @@ public:
 
     ConstExpr(ValType, std::string_view);
 
-    auto print(uint64_t) -> void override;
+    auto print(std::uint64_t) -> void override;
 };
 
 class BinExpr : public Expr {
@@ -145,7 +145,7 @@ public:
 
     BinExpr(OpType, Expr::Ptr, Expr::Ptr);
 
-    auto print(uint64_t) -> void override;
+    auto print(std::uint64_t) -> void override;
 };
 
 class UnaryExpr : public Expr {
@@ -155,5 +155,5 @@ public:
 
     UnaryExpr(OpType, Expr::Ptr);
 
-    auto print(uint64_t) -> void override;
+    auto print(std::uint64_t) -> void override;
 };

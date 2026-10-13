@@ -14,9 +14,9 @@ private:
 
     auto make_error(std::string, Token &) -> void;
 
-    auto expr_bp(uint64_t) -> std::optional<Expr::Ptr>;
+    auto expr_bp(std::uint64_t) -> std::optional<Expr::Ptr>;
 
-    auto infix_bp(OpType) -> std::optional<std::pair<uint64_t, uint64_t>>;
+    auto infix_bp(OpType) -> std::optional<std::pair<std::uint64_t, std::uint64_t>>;
     auto prefix_bp(OpType) -> std::optional<std::uint64_t>;
 
 public:

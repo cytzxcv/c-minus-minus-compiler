@@ -161,7 +161,7 @@ auto Lexer::is_alnum(char c) -> bool {
 }
 
 // "([^\\"]|(\\n)|(\\t)|(\\r)|(\\\\)|(\\')|(\\")|(\\a))*"
-auto Lexer::str() -> std::pair<Token, uint64_t> {
+auto Lexer::str() -> std::pair<Token, std::uint64_t> {
     std::uint64_t offset = 1;
     bool escaping = false;
     bool properly_ended = false;
@@ -203,7 +203,7 @@ auto Lexer::str() -> std::pair<Token, uint64_t> {
 }
 
 // ([0-9]+(\.[0-9]*)?|\.[0-9]+)((e|E)(\+|\-)?[0-9]+)?
-auto Lexer::num() -> std::pair<Token, uint64_t> {
+auto Lexer::num() -> std::pair<Token, std::uint64_t> {
     std::uint64_t offset = 1;
     std::uint64_t state = (peek(0) == '.');
     bool is_float;
@@ -282,7 +282,7 @@ auto Lexer::num() -> std::pair<Token, uint64_t> {
 }
 
 // [a-zA-Z_][a-zA-Z0-9_]*
-auto Lexer::iden() -> std::pair<Token, uint64_t> {
+auto Lexer::iden() -> std::pair<Token, std::uint64_t> {
     TokenType return_type;
     std::uint64_t offset = 1;
 
@@ -334,7 +334,7 @@ auto Lexer::iden() -> std::pair<Token, uint64_t> {
 }
 
 // (\+|\-|\*|\/|\|\||&&|{|}|\[|\]|\(|\)|;|,|\.)|((<|>|!|=)=?)
-auto Lexer::oper() -> std::pair<Token, uint64_t> {
+auto Lexer::oper() -> std::pair<Token, std::uint64_t> {
     TokenType return_type;
     std::uint64_t source_len = source.length();
     std::uint64_t offset = 1;
