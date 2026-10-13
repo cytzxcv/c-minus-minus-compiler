@@ -1,5 +1,8 @@
 #pragma once
 
+#include "token.hpp"
+
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -28,6 +31,9 @@ enum class OpType {
     Mov,
 };
 
+auto op_type_convert(TokenType) -> OpType;
+constexpr auto op_type_to_string(OpType) -> std::string_view;
+
 class Decl {
 public:
     using Ptr = std::unique_ptr<Decl>;
@@ -47,6 +53,7 @@ public:
     using Ptr = std::unique_ptr<Expr>;
 
     virtual ~Expr() = default;
+    virtual auto print(uint64_t indent = 0) -> void = 0;
 };
 
 class LValue : public Expr {
@@ -57,6 +64,8 @@ public:
     std::vector<Expr::Ptr> dims;
 
     LValue(std::string_view);
+
+    auto print(uint64_t) -> void override;
 };
 
 class FuncDecl : public Decl {
@@ -69,7 +78,7 @@ public:
     FuncDecl(ValType, std::string_view);
 };
 
-class VarDecl : public Decl, public Stmt {
+class VarDecl : public Decl {
 public:
     ValType type;
     std::vector<std::pair<LValue::Ptr, Expr::Ptr>> vars;
@@ -101,7 +110,7 @@ public:
 
 class ForStmt : public Stmt {
 public:
-    using InitPtr = std::unique_ptr<std::variant<VarDecl, Expr>>;
+    using InitPtr = std::variant<std::unique_ptr<VarDecl>, std::unique_ptr<Expr>>;
 
     InitPtr init;
     Expr::Ptr cond, iter;
@@ -124,6 +133,8 @@ public:
     std::string_view value;
 
     ConstExpr(ValType, std::string_view);
+
+    auto print(uint64_t) -> void override;
 };
 
 class BinExpr : public Expr {
@@ -132,6 +143,8 @@ public:
     Expr::Ptr lhs, rhs;
 
     BinExpr(OpType, Expr::Ptr, Expr::Ptr);
+
+    auto print(uint64_t) -> void override;
 };
 
 class UnaryExpr : public Expr {
@@ -140,4 +153,6 @@ public:
     Expr::Ptr rhs;
 
     UnaryExpr(OpType, Expr::Ptr);
+
+    auto print(uint64_t) -> void override;
 };

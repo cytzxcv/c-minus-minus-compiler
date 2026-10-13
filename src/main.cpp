@@ -1,5 +1,6 @@
 #include "lexer.hpp"
-#include "token.hpp"
+#include "node.hpp"
+#include "parser.hpp"
 
 #include <cerrno>
 #include <filesystem>
@@ -34,19 +35,17 @@ auto main(int argc, char **argv) -> int {
     std::string file_content = buffer.str();
 
     Lexer lexer = Lexer(file_content);
-    while (true) {
-        Token token = lexer.next_token();
-        if (token.type == TokenType::Err) {
-            std::println(stderr, "Lexer error: {}", token.lexeme);
-            return 5;
-        }
+    Parser parser = Parser(lexer);
 
-        if (token.type == TokenType::Eof) {
-            std::println("Total number of lines: {}", token.line);
-            break;
-        }
-
-        token.print();
+    std::optional<std::unique_ptr<Expr>> expr = parser.expr();
+    if (!expr.has_value() && lexer.has_error) {
+        println("{}", lexer.error);
+    }
+    else if (!expr.has_value()) {
+        std::println("{}", parser.error);
+    }
+    else {
+        expr.value()->print();
     }
 
     return 0;

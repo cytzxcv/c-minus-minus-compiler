@@ -55,6 +55,7 @@ public:
     std::uint64_t line, column;
 
     Token(TokenType, std::string_view, std::uint64_t, std::uint64_t);
+    Token();
     auto print() -> void;
 
     auto is_value() -> bool;

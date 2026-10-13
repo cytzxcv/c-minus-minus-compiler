@@ -4,10 +4,11 @@
 #include <cstdint>
 #include <format>
 #include <string_view>
+#include <utility>
 
-Lexer::Lexer(std::string source_) : source(source_), error(""), pos(0), line(1), column(1), has_error(false) { }
+Lexer::Lexer(std::string source_) : source(source_), pos(0), line(1), column(1), has_error(false), error("") { }
 
-auto Lexer::next_token() -> Token {
+auto Lexer::next_token(bool is_peeking) -> Token {
     std::uint64_t source_len = source.length();
 
     if (has_error) {
@@ -26,15 +27,31 @@ auto Lexer::next_token() -> Token {
     char current = peek(0);
 
     if (current == '\"') {
-        return str();
+        auto [token, offset] = str();
+        if (!is_peeking) {
+            advance(offset);
+        }
+        return token;
     }
     else if ((current == '.' && pos + 1 < source_len && is_num(peek(1))) || is_num(current)) {
-        return num();
+        auto [token, offset] = num();
+        if (!is_peeking) {
+            advance(offset);
+        }
+        return token;
     }
     else if (is_alpha(current)) {
-        return iden();
+        auto [token, offset] = iden();
+        if (!is_peeking) {
+            advance(offset);
+        }
+        return token;
     }
-    return oper();
+    auto [token, offset] = oper();
+    if (!is_peeking) {
+        advance(offset);
+    }
+    return token;
 }
 
 auto Lexer::make_token(TokenType type, std::uint64_t len) -> Token {
@@ -144,7 +161,7 @@ auto Lexer::is_alnum(char c) -> bool {
 }
 
 // "([^\\"]|(\\n)|(\\t)|(\\r)|(\\\\)|(\\')|(\\")|(\\a))*"
-auto Lexer::str() -> Token {
+auto Lexer::str() -> std::pair<Token, uint64_t> {
     std::uint64_t offset = 1;
     bool escaping = false;
     bool properly_ended = false;
@@ -169,7 +186,7 @@ auto Lexer::str() -> Token {
 
         char c = peek(offset);
         if (!(c == 'n' || c == 't' || c == 'r' || c == '\\' || c == '\'' || c == '\"' || c == 'a')) {
-            return make_error("Invalid escape sequence");
+            return {make_error("Invalid escape sequence"), 0};
         }
         escaping = false;
 
@@ -177,17 +194,16 @@ auto Lexer::str() -> Token {
     }
 
     if (!properly_ended) {
-        return make_error("Unterminated string");
+        return {make_error("Unterminated string"), 0};
     }
 
     offset++;
     Token return_token = make_token(TokenType::String, offset);
-    advance(offset);
-    return return_token;
+    return {return_token, offset};
 }
 
 // ([0-9]+(\.[0-9]*)?|\.[0-9]+)((e|E)(\+|\-)?[0-9]+)?
-auto Lexer::num() -> Token {
+auto Lexer::num() -> std::pair<Token, uint64_t> {
     std::uint64_t offset = 1;
     std::uint64_t state = (peek(0) == '.');
     bool is_float;
@@ -204,11 +220,8 @@ auto Lexer::num() -> Token {
         else if (state == 0 && (current == 'e' || current == 'E')) {
             state = 2;
         }
-        else if (state == 0 && !is_alpha(current)) {
-            break;
-        }
-        else if (state == 0) {
-            return make_error("Invalid number");
+        else if (state == 0 && is_alpha(current)) {
+            return {make_error("Invalid number"), 0};
         }
 
         else if (state == 1 && is_white(current)) {
@@ -217,11 +230,8 @@ auto Lexer::num() -> Token {
         else if (state == 1 && (current == 'e' || current == 'E')) {
             state = 2;
         }
-        else if (state == 1 && !is_alpha(current)) {
-            break;
-        }
-        else if (state == 1) {
-            return make_error("Invalid number");
+        else if (state == 1 && is_alpha(current)) {
+            return {make_error("Invalid number"), 0};
         }
 
         else if (state == 2 && (current == '+' || current == '-')) {
@@ -231,21 +241,21 @@ auto Lexer::num() -> Token {
             state = 4;
         }
         else if (state == 2) {
-            return make_error("Invalid number");
+            return {make_error("Invalid number"), 0};
         }
 
         else if (state == 3 && is_num(current)) {
             state = 4;
         }
         else if (state == 3) {
-            return make_error("Invalid number");
+            return {make_error("Invalid number"), 0};
         }
 
         else if (state == 4 && (is_white(current) || !is_alpha(current))) {
             break;
         }
         else if (state == 4 && !is_num(current)) {
-            return make_error("Invalid number");
+            return {make_error("Invalid number"), 0};
         }
 
         offset++;
@@ -258,16 +268,15 @@ auto Lexer::num() -> Token {
         is_float = true;
     }
     else {
-        return make_error("Invalid number");
+        return {make_error("Invalid number"), 0};
     }
 
-    Token return_token = make_token(is_float ? TokenType::Float : TokenType::Integer, offset);
-    advance(offset);
-    return return_token;
+    Token return_token = make_token(is_float ? TokenType::Floating : TokenType::Integer, offset);
+    return {return_token, offset};
 }
 
 // [a-zA-Z_][a-zA-Z0-9_]*
-auto Lexer::iden() -> Token {
+auto Lexer::iden() -> std::pair<Token, uint64_t> {
     TokenType return_type;
     std::uint64_t offset = 1;
 
@@ -315,12 +324,11 @@ auto Lexer::iden() -> Token {
     }
 
     Token return_token = make_token(return_type, offset);
-    advance(offset);
-    return return_token;
+    return {return_token, offset};
 }
 
 // (\+|\-|\*|\/|\|\||&&|{|}|\[|\]|\(|\)|;|,|\.)|((<|>|!|=)=?)
-auto Lexer::oper() -> Token {
+auto Lexer::oper() -> std::pair<Token, uint64_t> {
     TokenType return_type;
     std::uint64_t source_len = source.length();
     std::uint64_t offset = 1;
@@ -376,7 +384,7 @@ auto Lexer::oper() -> Token {
             offset++;
             break;
         }
-        return make_error("Unknown operator");
+        return {make_error("Unknown operator"), 0};
         break;
     case '&':
         if (pos + 1 < source_len && peek(1) == '&') {
@@ -384,7 +392,7 @@ auto Lexer::oper() -> Token {
             offset++;
             break;
         }
-        return make_error("Unknown operator");
+        return {make_error("Unknown operator"), 0};
         break;
     case '{':
         return_type = TokenType::LeftBrace;
@@ -414,11 +422,11 @@ auto Lexer::oper() -> Token {
         return_type = TokenType::Dot;
         break;
     default:
-        return make_error("Unknown operator");
+        return {make_error("Unknown operator"), 0};
         break;
     }
 
     Token return_token = make_token(return_type, offset);
-    advance();
-    return return_token;
+    // advance();
+    return {return_token, offset};
 }

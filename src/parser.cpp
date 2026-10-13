@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "node.hpp"
 #include "token.hpp"
 
 #include <format>
@@ -8,58 +9,8 @@
 Parser::Parser(Lexer &lexer_) : lexer(lexer_) { }
 
 auto Parser::make_error(std::string err, Token &tok) -> void {
+    has_error = true;
     error = std::format("{} at {}:{}", err, tok.line, tok.column);
-}
-
-auto Parser::ttype_to_otype(TokenType tok_type) -> OpType {
-    switch (tok_type) {
-    case TokenType::Plus:
-        return OpType::Add;
-        break;
-    case TokenType::Minus:
-        return OpType::Sub;
-        break;
-    case TokenType::Multiply:
-        return OpType::Mul;
-        break;
-    case TokenType::Divide:
-        return OpType::Div;
-        break;
-    case TokenType::Lesser:
-        return OpType::Lt;
-        break;
-    case TokenType::Greater:
-        return OpType::Gt;
-        break;
-    case TokenType::LesserEqual:
-        return OpType::Leq;
-        break;
-    case TokenType::GreaterEqual:
-        return OpType::Geq;
-        break;
-    case TokenType::Equal:
-        return OpType::Eq;
-        break;
-    case TokenType::NotEqual:
-        return OpType::Neq;
-        break;
-    case TokenType::LogicalOr:
-        return OpType::Or;
-        break;
-    case TokenType::LogicalAnd:
-        return OpType::And;
-        break;
-    case TokenType::LogicalNot:
-        return OpType::Not;
-        break;
-    case TokenType::Assign:
-        return OpType::Mov;
-        break;
-    default:
-    }
-
-    // unreachable
-    return OpType::Mov;
 }
 
 auto Parser::expr() -> std::optional<std::unique_ptr<Expr>> {
@@ -67,9 +18,8 @@ auto Parser::expr() -> std::optional<std::unique_ptr<Expr>> {
 }
 
 auto Parser::expr_bp(uint64_t min_bp) -> std::optional<std::unique_ptr<Expr>> {
-    // todo
-    (void)min_bp;
-    Token lhs = lexer.next_token();
+    Token lhs = lexer.next_token(false);
+    // lhs.print();
     if (!lhs.is_value()) {
         make_error("Expect identifier or constant", lhs);
         return std::nullopt;
@@ -88,19 +38,20 @@ auto Parser::expr_bp(uint64_t min_bp) -> std::optional<std::unique_ptr<Expr>> {
     }
 
     while (true) {
-        Token op = lexer.next_token();
+        Token op = lexer.next_token(true);
+        // op.print();
         if (op.type == TokenType::Eof) {
             break;
         }
         else if (!op.is_oper()) {
-            make_error("Expect infix operator", op);
+            make_error("Expect infix operator1", op);
             return std::nullopt;
         }
 
         // std::optional<std::pair<uint64_t, uint64_t>>
-        auto result = infix_bp(ttype_to_otype(op.type));
+        auto result = infix_bp(op_type_convert(op.type));
         if (!result.has_value()) {
-            make_error("Expect infix operator", op);
+            make_error("Expect infix operator2", op);
             return std::nullopt;
         }
 
@@ -109,12 +60,13 @@ auto Parser::expr_bp(uint64_t min_bp) -> std::optional<std::unique_ptr<Expr>> {
             break;
         }
 
+        (void)lexer.next_token();
         std::optional<std::unique_ptr<Expr>> rhs = expr_bp(r_bp);
         if (!rhs.has_value()) {
             return std::nullopt;
         }
 
-        expr = std::make_unique<BinExpr>(ttype_to_otype(op.type), std::move(expr), std::move(rhs.value()));
+        expr = std::make_unique<BinExpr>(op_type_convert(op.type), std::move(expr), std::move(rhs.value()));
     }
 
     return expr;

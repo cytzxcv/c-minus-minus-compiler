@@ -5,12 +5,12 @@
 #include <cstdint>
 #include <expected>
 #include <string>
+#include <utility>
 
 class Lexer {
 private:
-    std::string source, error;
+    std::string source;
     std::uint64_t pos, line, column;
-    bool has_error;
 
     auto make_token(TokenType, std::uint64_t) -> Token;
     auto make_error() -> Token;
@@ -29,13 +29,16 @@ private:
     auto is_num(char) -> bool;
     auto is_alnum(char) -> bool;
 
-    auto str() -> Token;
-    auto num() -> Token;
-    auto iden() -> Token;
-    auto oper() -> Token;
+    auto str() -> std::pair<Token, uint64_t>;
+    auto num() -> std::pair<Token, uint64_t>;
+    auto iden() -> std::pair<Token, uint64_t>;
+    auto oper() -> std::pair<Token, uint64_t>;
 
 public:
+    bool has_error;
+    std::string error;
+
     Lexer(std::string);
 
-    auto next_token() -> Token;
+    auto next_token(bool is_peeking = false) -> Token;
 };
