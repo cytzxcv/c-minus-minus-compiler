@@ -223,6 +223,9 @@ auto Lexer::num() -> std::pair<Token, uint64_t> {
         else if (state == 0 && is_alpha(current)) {
             return {make_error("Invalid number"), 0};
         }
+        else if (state == 0 && !is_num(current)) {
+            break;
+        }
 
         else if (state == 1 && is_white(current)) {
             break;
@@ -232,6 +235,9 @@ auto Lexer::num() -> std::pair<Token, uint64_t> {
         }
         else if (state == 1 && is_alpha(current)) {
             return {make_error("Invalid number"), 0};
+        }
+        else if (state == 1 && !is_num(current)) {
+            break;
         }
 
         else if (state == 2 && (current == '+' || current == '-')) {

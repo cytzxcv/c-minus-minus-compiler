@@ -17,11 +17,14 @@ auto Parser::expr() -> std::optional<Expr::Ptr> {
     return expr_bp(0);
 }
 
+auto Parser::assignable() -> std::optional<Expr::Ptr> {
+    return expr_bp(90);
+}
+
 auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
-    Expr::Ptr expr;
+    Expr::Ptr return_expr;
     Token tok = lexer.next_token(false);
     if (tok.is_oper()) {
-        // todo
         std::optional<std::uint64_t> result = prefix_bp(op_type_convert(tok.type));
         if (!result.has_value()) {
             make_error("Expect prefix operator", tok);
@@ -31,16 +34,19 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         if (!rhs.has_value()) {
             return std::nullopt;
         }
-        expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()));
+        return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()));
     }
     else if (tok.is_value()) {
         switch (tok.type) {
         case TokenType::Identifier:
-            expr = std::make_unique<LValue>(tok.lexeme);
+            return_expr = std::make_unique<LValue>(tok.lexeme);
+            break;
         case TokenType::Integer:
-            expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme);
+            return_expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme);
+            break;
         case TokenType::Floating:
-            expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme);
+            return_expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme);
+            break;
         default:
             // unreachable
         }
@@ -52,7 +58,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
 
     while (true) {
         Token op = lexer.next_token(true);
-        if (op.type == TokenType::Eof) {
+        if (op.type == TokenType::Eof || op.type == TokenType::RightBracket) {
             break;
         }
         else if (!op.is_oper()) {
@@ -73,15 +79,43 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         }
 
         (void)lexer.next_token();
+        if (op_type_convert(op.type) == OpType::Brk) {
+            if (dynamic_cast<LValue *>(return_expr.get()) == nullptr) {
+                make_error("Expect indexable", op);
+                return std::nullopt;
+            }
+
+            if (lexer.next_token(true).type == TokenType::RightBracket) {
+                (void)lexer.next_token();
+                static_cast<LValue *>(return_expr.get())->dims.emplace_back(nullptr);
+                continue;
+            }
+
+            std::optional<Expr::Ptr> index = expr();
+            if (!index.has_value()) {
+                return std::nullopt;
+            }
+
+            Token rbracket = lexer.next_token();
+            if (rbracket.type != TokenType::RightBracket) {
+                make_error("Expect right bracket", rbracket);
+                return std::nullopt;
+            }
+
+            static_cast<LValue *>(return_expr.get())->dims.emplace_back(std::move(index).value());
+            continue;
+        }
+
         std::optional<Expr::Ptr> rhs = expr_bp(r_bp);
         if (!rhs.has_value()) {
             return std::nullopt;
         }
 
-        expr = std::make_unique<BinExpr>(op_type_convert(op.type), std::move(expr), std::move(rhs.value()));
+        return_expr =
+            std::make_unique<BinExpr>(op_type_convert(op.type), std::move(return_expr), std::move(rhs.value()));
     }
 
-    return expr;
+    return return_expr;
 }
 
 auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
@@ -112,6 +146,9 @@ auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::
     case OpType::Mul:
     case OpType::Div:
         return std::pair{70, 71};
+        break;
+    case OpType::Brk:
+        return std::pair{90, 91};
         break;
     default:
     }

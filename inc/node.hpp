@@ -29,6 +29,7 @@ enum class OpType {
     And,
     Not,
     Mov,
+    Brk,
 };
 
 auto op_type_convert(TokenType) -> OpType;

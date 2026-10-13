@@ -49,6 +49,9 @@ auto op_type_convert(TokenType tok_type) -> OpType {
     case TokenType::Assign:
         return OpType::Mov;
         break;
+    case TokenType::LeftBracket:
+        return OpType::Brk;
+        break;
     default:
     }
 
@@ -100,6 +103,9 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
     case OpType::Mov:
         return "=";
         break;
+    case OpType::Brk:
+        return "[]";
+        break;
     }
 }
 
@@ -128,22 +134,35 @@ BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std:
 UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : op(op_), rhs(std::move(rhs_)) { }
 
 auto LValue::print(uint64_t indent = 0) -> void {
-    std::println("{}{}", std::string(indent, ' '), name);
+    std::print("{}LValue {}", std::string(indent, ' '), name);
+    if (dims.empty()) {
+        std::println();
+        return;
+    }
+    std::println(" (");
+    for (const auto &dim : dims) {
+        if (dim == nullptr) {
+            std::println("{}*empty*", std::string(indent + 2, ' '));
+            continue;
+        }
+        dim->print(indent + 2);
+    }
+    std::println("{})", std::string(indent, ' '));
 }
 
 auto ConstExpr::print(uint64_t indent = 0) -> void {
-    std::println("{}{}", std::string(indent, ' '), value);
+    std::println("{}ConstExpr {}", std::string(indent, ' '), value);
 }
 
 auto BinExpr::print(uint64_t indent = 0) -> void {
-    std::println("{}{} (", std::string(indent, ' '), op_type_to_string(op));
+    std::println("{}BinExpr {} (", std::string(indent, ' '), op_type_to_string(op));
     lhs->print(indent + 2);
     rhs->print(indent + 2);
     std::println("{})", std::string(indent, ' '));
 }
 
 auto UnaryExpr::print(uint64_t indent = 0) -> void {
-    std::println("{}{} (", std::string(indent, ' '), op_type_to_string(op));
+    std::println("{}UnaryExpr {} (", std::string(indent, ' '), op_type_to_string(op));
     rhs->print(indent + 2);
     std::println("{})", std::string(indent, ' '));
 }

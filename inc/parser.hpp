@@ -26,4 +26,5 @@ public:
     Parser(Lexer &);
 
     auto expr() -> std::optional<Expr::Ptr>;
+    auto assignable() -> std::optional<Expr::Ptr>;
 };

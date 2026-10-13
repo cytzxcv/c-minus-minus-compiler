@@ -167,6 +167,7 @@ auto Token::is_oper() -> bool {
     case TokenType::LogicalAnd:
     case TokenType::LogicalNot:
     case TokenType::Assign:
+    case TokenType::LeftBracket:
         return true;
     default:
         return false;
