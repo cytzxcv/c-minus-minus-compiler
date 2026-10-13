@@ -14,9 +14,10 @@ private:
 
     auto make_error(std::string, Token &) -> void;
 
-    auto expr_bp(uint64_t) -> std::optional<std::unique_ptr<Expr>>;
+    auto expr_bp(uint64_t) -> std::optional<Expr::Ptr>;
 
     auto infix_bp(OpType) -> std::optional<std::pair<uint64_t, uint64_t>>;
+    auto prefix_bp(OpType) -> std::optional<std::uint64_t>;
 
 public:
     bool has_error;
@@ -24,5 +25,5 @@ public:
 
     Parser(Lexer &);
 
-    auto expr() -> std::optional<std::unique_ptr<Expr>>;
+    auto expr() -> std::optional<Expr::Ptr>;
 };

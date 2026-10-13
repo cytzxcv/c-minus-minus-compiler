@@ -135,8 +135,6 @@ constexpr auto token_type_to_string(TokenType type) -> std::string_view {
 Token::Token(TokenType type_, std::string_view lexeme_, std::uint64_t line_, std::uint64_t column_)
     : type(type_), lexeme(lexeme_), line(line_), column(column_) { }
 
-Token::Token() : type(TokenType::Eof), lexeme(""), line(0), column(0) { }
-
 auto Token::print() -> void {
     std::println("{} at ({}, {}): {}", token_type_to_string(type), line, column, lexeme);
 }
