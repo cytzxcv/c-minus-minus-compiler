@@ -6,7 +6,7 @@
 #include <optional>
 #include <utility>
 
-Parser::Parser(Lexer &lexer_) : lexer(lexer_) { }
+Parser::Parser(Lexer &lexer_) : lexer(lexer_), has_error(false), error("") { }
 
 auto Parser::make_error(std::string err, Token &tok) -> void {
     has_error = true;
@@ -67,43 +67,23 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         }
 
         // std::optional<std::pair<std::uint64_t, std::uint64_t>>
-        auto result = infix_bp(op_type_convert(op.type));
-        if (!result.has_value()) {
+        auto bp_result = infix_bp(op_type_convert(op.type));
+        if (!bp_result.has_value()) {
             make_error("Expect infix operator", op);
             return std::nullopt;
         }
 
-        auto [l_bp, r_bp] = result.value();
+        auto [l_bp, r_bp] = bp_result.value();
         if (l_bp < min_bp) {
             break;
         }
 
         (void)lexer.next_token();
-        if (op_type_convert(op.type) == OpType::Brk) {
-            if (dynamic_cast<LValue *>(return_expr.get()) == nullptr) {
-                make_error("Expect indexable", op);
-                return std::nullopt;
-            }
-
-            if (lexer.next_token(true).type == TokenType::RightBracket) {
-                (void)lexer.next_token();
-                static_cast<LValue *>(return_expr.get())->dims.emplace_back(nullptr);
-                continue;
-            }
-
-            std::optional<Expr::Ptr> index = expr();
-            if (!index.has_value()) {
-                return std::nullopt;
-            }
-
-            Token rbracket = lexer.next_token();
-            if (rbracket.type != TokenType::RightBracket) {
-                make_error("Expect right bracket", rbracket);
-                return std::nullopt;
-            }
-
-            static_cast<LValue *>(return_expr.get())->dims.emplace_back(std::move(index).value());
+        if (try_index(op, return_expr)) {
             continue;
+        }
+        else if (has_error) {
+            return std::nullopt;
         }
 
         std::optional<Expr::Ptr> rhs = expr_bp(r_bp);
@@ -116,6 +96,38 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
     }
 
     return return_expr;
+}
+
+auto Parser::try_index(Token &op, Expr::Ptr &lvalue) -> bool {
+
+    if (op_type_convert(op.type) != OpType::Brk) {
+        return false;
+    }
+
+    if (dynamic_cast<LValue *>(lvalue.get()) == nullptr) {
+        make_error("Expect indexable", op);
+        return false;
+    }
+
+    if (lexer.next_token(true).type == TokenType::RightBracket) {
+        (void)lexer.next_token();
+        static_cast<LValue *>(lvalue.get())->dims.emplace_back(nullptr);
+        return true;
+    }
+
+    std::optional<Expr::Ptr> index = expr();
+    if (!index.has_value()) {
+        return false;
+    }
+
+    Token rbracket = lexer.next_token();
+    if (rbracket.type != TokenType::RightBracket) {
+        make_error("Expect right bracket", rbracket);
+        return false;
+    }
+
+    static_cast<LValue *>(lvalue.get())->dims.emplace_back(std::move(index).value());
+    return true;
 }
 
 auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
