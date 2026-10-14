@@ -23,17 +23,35 @@ auto Parser::assignable() -> std::optional<Expr::Ptr> {
 
 auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
     Expr::Ptr return_expr;
-    Token tok = lexer.next_token(false);
-    if (tok.is_oper()) {
+    Token tok = lexer.next_token();
+
+    if (tok.type == TokenType::LeftParenthesis) {
+        std::optional<Expr::Ptr> paren_expr = expr();
+
+        if (!paren_expr.has_value()) {
+            return std::nullopt;
+        }
+
+        Token rparen = lexer.next_token();
+        if (rparen.type != TokenType::RightParenthesis) {
+            make_error("Expect right parenthesis", rparen);
+            return std::nullopt;
+        }
+
+        return_expr = std::move(paren_expr.value());
+    }
+    else if (tok.is_oper()) {
         std::optional<std::uint64_t> result = prefix_bp(op_type_convert(tok.type));
         if (!result.has_value()) {
             make_error("Expect prefix operator", tok);
             return std::nullopt;
         }
+
         std::optional<Expr::Ptr> rhs = expr_bp(result.value());
         if (!rhs.has_value()) {
             return std::nullopt;
         }
+
         return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()));
     }
     else if (tok.is_value()) {
@@ -58,7 +76,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
 
     while (true) {
         Token op = lexer.next_token(true);
-        if (op.type == TokenType::Eof || op.type == TokenType::RightBracket) {
+        if (op.type == TokenType::Eof || op.type == TokenType::RightBracket || op.type == TokenType::RightParenthesis) {
             break;
         }
         else if (!op.is_oper()) {
@@ -79,6 +97,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         }
 
         (void)lexer.next_token();
+
         if (try_index(op, return_expr)) {
             continue;
         }
@@ -99,7 +118,6 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
 }
 
 auto Parser::try_index(Token &op, Expr::Ptr &lvalue) -> bool {
-
     if (op_type_convert(op.type) != OpType::Brk) {
         return false;
     }
