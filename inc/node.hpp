@@ -30,6 +30,7 @@ enum class OpType {
     Not,
     Mov,
     Brk,
+    Prn,
 };
 
 auto op_type_convert(TokenType) -> OpType;
@@ -154,6 +155,18 @@ public:
     Expr::Ptr rhs;
 
     UnaryExpr(OpType, Expr::Ptr);
+
+    auto print(std::uint64_t) -> void override;
+};
+
+class FuncExpr : public Expr {
+public:
+    using Ptr = std::unique_ptr<FuncExpr>;
+
+    std::string_view name;
+    std::vector<Expr::Ptr> args;
+
+    FuncExpr(std::string_view);
 
     auto print(std::uint64_t) -> void override;
 };

@@ -18,7 +18,7 @@ auto Parser::expr() -> std::optional<Expr::Ptr> {
 }
 
 auto Parser::assignable() -> std::optional<Expr::Ptr> {
-    return expr_bp(90);
+    return expr_bp(100);
 }
 
 auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
@@ -76,7 +76,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
 
     while (true) {
         Token op = lexer.next_token(true);
-        if (op.type == TokenType::Eof || op.type == TokenType::RightBracket || op.type == TokenType::RightParenthesis) {
+        if (op.is_delim()) {
             break;
         }
         else if (!op.is_oper()) {
@@ -105,6 +105,13 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
             return std::nullopt;
         }
 
+        if (try_func(op, return_expr)) {
+            continue;
+        }
+        else if (has_error) {
+            return std::nullopt;
+        }
+
         std::optional<Expr::Ptr> rhs = expr_bp(r_bp);
         if (!rhs.has_value()) {
             return std::nullopt;
@@ -117,19 +124,21 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
     return return_expr;
 }
 
-auto Parser::try_index(Token &op, Expr::Ptr &lvalue) -> bool {
+auto Parser::try_index(Token &op, Expr::Ptr &lhs) -> bool {
     if (op_type_convert(op.type) != OpType::Brk) {
         return false;
     }
 
-    if (dynamic_cast<LValue *>(lvalue.get()) == nullptr) {
+    LValue *lvalue = dynamic_cast<LValue *>(lhs.get());
+
+    if (lvalue == nullptr) {
         make_error("Expect indexable", op);
         return false;
     }
 
     if (lexer.next_token(true).type == TokenType::RightBracket) {
         (void)lexer.next_token();
-        static_cast<LValue *>(lvalue.get())->dims.emplace_back(nullptr);
+        lvalue->dims.emplace_back(nullptr);
         return true;
     }
 
@@ -144,7 +153,49 @@ auto Parser::try_index(Token &op, Expr::Ptr &lvalue) -> bool {
         return false;
     }
 
-    static_cast<LValue *>(lvalue.get())->dims.emplace_back(std::move(index).value());
+    lvalue->dims.emplace_back(std::move(index.value()));
+    return true;
+}
+
+auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
+    if (op_type_convert(op.type) != OpType::Prn) {
+        return false;
+    }
+
+    LValue *lvalue = dynamic_cast<LValue *>(lhs.get());
+
+    if (lvalue == nullptr || !lvalue->dims.empty()) {
+        make_error("Expect callable", op);
+        return false;
+    }
+
+    lhs = std::make_unique<FuncExpr>(lvalue->name);
+
+    if (lexer.next_token(true).type == TokenType::RightParenthesis) {
+        (void)lexer.next_token();
+        return true;
+    }
+
+    while (true) {
+        std::optional<Expr::Ptr> arg = expr();
+        if (!arg.has_value()) {
+            return false;
+        }
+
+        Token delim = lexer.next_token();
+        if (delim.type == TokenType::Comma) {
+            static_cast<FuncExpr *>(lhs.get())->args.emplace_back(std::move(arg.value()));
+            continue;
+        }
+        else if (delim.type == TokenType::RightParenthesis) {
+            static_cast<FuncExpr *>(lhs.get())->args.emplace_back(std::move(arg.value()));
+            break;
+        }
+
+        make_error("Expect comma or right parenthesis", delim);
+        return false;
+    }
+
     return true;
 }
 
@@ -177,8 +228,11 @@ auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::
     case OpType::Div:
         return std::pair{70, 71};
         break;
-    case OpType::Brk:
+    case OpType::Prn:
         return std::pair{90, 91};
+        break;
+    case OpType::Brk:
+        return std::pair{100, 101};
         break;
     default:
     }

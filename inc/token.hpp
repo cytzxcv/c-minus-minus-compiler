@@ -59,4 +59,5 @@ public:
 
     auto is_value() -> bool;
     auto is_oper() -> bool;
+    auto is_delim() -> bool;
 };

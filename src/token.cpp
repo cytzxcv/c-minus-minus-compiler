@@ -146,6 +146,7 @@ auto Token::is_value() -> bool {
     case TokenType::Identifier:
         return true;
         break;
+
     default:
         return false;
     }
@@ -168,7 +169,22 @@ auto Token::is_oper() -> bool {
     case TokenType::LogicalNot:
     case TokenType::Assign:
     case TokenType::LeftBracket:
+    case TokenType::LeftParenthesis:
         return true;
+
+    default:
+        return false;
+    }
+}
+
+auto Token::is_delim() -> bool {
+    switch (type) {
+    case TokenType::Eof:
+    case TokenType::RightBracket:
+    case TokenType::RightParenthesis:
+    case TokenType::Comma:
+        return true;
+
     default:
         return false;
     }
