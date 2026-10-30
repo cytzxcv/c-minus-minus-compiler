@@ -117,18 +117,18 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
 
 LValue::LValue(std::string_view name_) : name(name_), dims{} { }
 
-FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), parems{}, stmts{} { }
+FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body{} { }
 
 VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
 
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
 
-BlockStmt::BlockStmt() : stmts{} { }
+BlockStmt::BlockStmt() : body{} { }
 
 IfStmt::IfStmt(Expr::Ptr cond_, Stmt::Ptr if_branch_, Stmt::Ptr else_branch_)
     : cond(std::move(cond_)), if_branch(std::move(if_branch_)), else_branch(std::move(else_branch_)) { }
 
-ForStmt::ForStmt(ForStmt::InitPtr init_, Expr::Ptr cond_, Expr::Ptr iter_, Stmt::Ptr stmt_)
+ForStmt::ForStmt(ForStmt::Init init_, Expr::Ptr cond_, Expr::Ptr iter_, Stmt::Ptr stmt_)
     : init(std::move(init_)), cond(std::move(cond_)), iter(std::move(iter_)), stmt(std::move(stmt_)) { }
 
 WhileStmt::WhileStmt(Expr::Ptr cond_, Stmt::Ptr stmt_) : cond(std::move(cond_)), stmt(std::move(stmt_)) { }
@@ -141,7 +141,7 @@ UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : op(op_), rhs(std::move(rhs_))
 
 FuncExpr::FuncExpr(std::string_view name_) : name(name_), args{} { }
 
-auto LValue::print(std::uint64_t indent = 0) -> void {
+auto LValue::print(std::uint64_t indent = 0) const -> void {
     std::print("{}LValue {}", std::string(indent, ' '), name);
 
     if (dims.empty()) {
@@ -162,11 +162,11 @@ auto LValue::print(std::uint64_t indent = 0) -> void {
     std::println("{})", std::string(indent, ' '));
 }
 
-auto ConstExpr::print(std::uint64_t indent = 0) -> void {
+auto ConstExpr::print(std::uint64_t indent = 0) const -> void {
     std::println("{}ConstExpr {}", std::string(indent, ' '), value);
 }
 
-auto BinExpr::print(std::uint64_t indent = 0) -> void {
+auto BinExpr::print(std::uint64_t indent = 0) const -> void {
     std::println("{}BinExpr {} (", std::string(indent, ' '), op_type_to_string(op));
 
     lhs->print(indent + 2);
@@ -175,7 +175,7 @@ auto BinExpr::print(std::uint64_t indent = 0) -> void {
     std::println("{})", std::string(indent, ' '));
 }
 
-auto UnaryExpr::print(std::uint64_t indent = 0) -> void {
+auto UnaryExpr::print(std::uint64_t indent = 0) const -> void {
     std::println("{}UnaryExpr {} (", std::string(indent, ' '), op_type_to_string(op));
 
     rhs->print(indent + 2);
@@ -183,7 +183,7 @@ auto UnaryExpr::print(std::uint64_t indent = 0) -> void {
     std::println("{})", std::string(indent, ' '));
 }
 
-auto FuncExpr::print(std::uint64_t indent = 0) -> void {
+auto FuncExpr::print(std::uint64_t indent = 0) const -> void {
     std::print("{}FuncExpr {}", std::string(indent, ' '), name);
 
     if (args.empty()) {

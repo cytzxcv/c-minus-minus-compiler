@@ -10,27 +10,27 @@
 #include <vector>
 
 enum class ValType {
-    Int,
-    Flt,
+    Int, // int
+    Flt, // float
 };
 
 enum class OpType {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Lt,
-    Gt,
-    Leq,
-    Geq,
-    Eq,
-    Neq,
-    Or,
-    And,
-    Not,
-    Mov,
-    Brk,
-    Prn,
+    Add, // +
+    Sub, // -
+    Mul, // *
+    Div, // /
+    Lt,  // <
+    Gt,  // >
+    Leq, // <=
+    Geq, // >=
+    Eq,  // ==
+    Neq, // !=
+    Or,  // ||
+    And, // &&
+    Not, // !
+    Mov, // =
+    Brk, // [
+    Prn, // (
 };
 
 auto op_type_convert(TokenType) -> OpType;
@@ -55,7 +55,7 @@ public:
     using Ptr = std::unique_ptr<Expr>;
 
     virtual ~Expr() = default;
-    virtual auto print(std::uint64_t indent = 0) -> void = 0;
+    virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 };
 
 class LValue : public Expr {
@@ -67,25 +67,30 @@ public:
 
     LValue(std::string_view);
 
-    auto print(std::uint64_t) -> void override;
-};
-
-class FuncDecl : public Decl {
-public:
-    ValType type;
-    std::string_view name;
-    std::vector<LValue::Ptr> parems;
-    std::vector<Stmt::Ptr> stmts;
-
-    FuncDecl(ValType, std::string_view);
+    auto print(std::uint64_t) const -> void override;
 };
 
 class VarDecl : public Decl {
 public:
+    using Var = std::pair<LValue::Ptr, Expr::Ptr>;
+
     ValType type;
-    std::vector<std::pair<LValue::Ptr, Expr::Ptr>> vars;
+    std::vector<Var> vars;
 
     VarDecl(ValType);
+};
+
+class FuncDecl : public Decl {
+public:
+    using Item = std::variant<std::unique_ptr<VarDecl>, Stmt::Ptr>;
+    using Param = std::pair<ValType, LValue::Ptr>;
+
+    ValType type;
+    std::string_view name;
+    std::vector<Param> params;
+    std::vector<Item> body;
+
+    FuncDecl(ValType, std::string_view);
 };
 
 class ExprStmt : public Stmt {
@@ -97,7 +102,9 @@ public:
 
 class BlockStmt : public Stmt {
 public:
-    std::vector<Stmt::Ptr> stmts;
+    using Item = std::variant<std::unique_ptr<VarDecl>, Stmt::Ptr>;
+
+    std::vector<Item> body;
 
     BlockStmt();
 };
@@ -112,13 +119,13 @@ public:
 
 class ForStmt : public Stmt {
 public:
-    using InitPtr = std::variant<std::unique_ptr<VarDecl>, std::unique_ptr<Expr>>;
+    using Init = std::variant<std::monostate, std::unique_ptr<VarDecl>, Expr::Ptr>;
 
-    InitPtr init;
+    Init init;
     Expr::Ptr cond, iter;
     Stmt::Ptr stmt;
 
-    ForStmt(InitPtr, Expr::Ptr, Expr::Ptr, Stmt::Ptr);
+    ForStmt(Init, Expr::Ptr, Expr::Ptr, Stmt::Ptr);
 };
 
 class WhileStmt : public Stmt {
@@ -136,7 +143,7 @@ public:
 
     ConstExpr(ValType, std::string_view);
 
-    auto print(std::uint64_t) -> void override;
+    auto print(std::uint64_t) const -> void override;
 };
 
 class BinExpr : public Expr {
@@ -146,7 +153,7 @@ public:
 
     BinExpr(OpType, Expr::Ptr, Expr::Ptr);
 
-    auto print(std::uint64_t) -> void override;
+    auto print(std::uint64_t) const -> void override;
 };
 
 class UnaryExpr : public Expr {
@@ -156,7 +163,7 @@ public:
 
     UnaryExpr(OpType, Expr::Ptr);
 
-    auto print(std::uint64_t) -> void override;
+    auto print(std::uint64_t) const -> void override;
 };
 
 class FuncExpr : public Expr {
@@ -168,5 +175,5 @@ public:
 
     FuncExpr(std::string_view);
 
-    auto print(std::uint64_t) -> void override;
+    auto print(std::uint64_t) const -> void override;
 };
