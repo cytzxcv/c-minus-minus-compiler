@@ -313,12 +313,6 @@ auto Lexer::iden() -> std::pair<Token, std::uint64_t> {
     else if (iden == "for") {
         return_type = TokenType::For;
     }
-    else if (iden == "struct") {
-        return_type = TokenType::Struct;
-    }
-    else if (iden == "union") {
-        return_type = TokenType::Union;
-    }
     else if (iden == "void") {
         return_type = TokenType::Void;
     }

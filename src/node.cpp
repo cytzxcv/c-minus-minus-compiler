@@ -117,9 +117,11 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
 
 LValue::LValue(std::string_view name_) : name(name_), dims{} { }
 
-FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body{} { }
+TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(name_) { }
 
 VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
+
+FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body{} { }
 
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
 

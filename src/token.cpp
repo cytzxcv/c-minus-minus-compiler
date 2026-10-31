@@ -13,12 +13,6 @@ constexpr auto token_type_to_string(TokenType type) -> std::string_view {
     case TokenType::Typedef:
         return "Typedef";
         break;
-    case TokenType::Struct:
-        return "Struct";
-        break;
-    case TokenType::Union:
-        return "Union";
-        break;
     case TokenType::If:
         return "If";
         break;

@@ -70,6 +70,14 @@ public:
     auto print(std::uint64_t) const -> void override;
 };
 
+class TypeDecl : public Decl {
+public:
+    ValType type;
+    std::string_view name;
+
+    TypeDecl(ValType, std::string_view);
+};
+
 class VarDecl : public Decl {
 public:
     using Var = std::pair<LValue::Ptr, Expr::Ptr>;
@@ -82,7 +90,7 @@ public:
 
 class FuncDecl : public Decl {
 public:
-    using Item = std::variant<std::unique_ptr<VarDecl>, Stmt::Ptr>;
+    using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
     using Param = std::pair<ValType, LValue::Ptr>;
 
     ValType type;
@@ -102,7 +110,7 @@ public:
 
 class BlockStmt : public Stmt {
 public:
-    using Item = std::variant<std::unique_ptr<VarDecl>, Stmt::Ptr>;
+    using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
 
     std::vector<Item> body;
 
@@ -168,8 +176,6 @@ public:
 
 class FuncExpr : public Expr {
 public:
-    using Ptr = std::unique_ptr<FuncExpr>;
-
     std::string_view name;
     std::vector<Expr::Ptr> args;
 

@@ -6,7 +6,9 @@
 #include <optional>
 #include <utility>
 
-Parser::Parser(Lexer &lexer_) : lexer(lexer_), has_error(false), error("") { }
+Parser::Parser(Lexer &lexer_) : lexer(lexer_), type_table(), has_error(false), error("") {
+    type_table.emplace_back();
+}
 
 auto Parser::make_error(std::string err, Token &tok) -> void {
     has_error = true;

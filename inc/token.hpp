@@ -6,8 +6,6 @@
 enum class TokenType {
     Return,
     Typedef,
-    Struct,
-    Union,
     If,
     Else,
     For,

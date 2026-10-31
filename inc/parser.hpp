@@ -6,11 +6,14 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 class Parser {
 private:
     Lexer &lexer;
+    std::vector<std::unordered_map<std::string_view, ValType>> type_table;
 
     auto make_error(std::string, Token &) -> void;
 
