@@ -37,15 +37,15 @@ auto main(int argc, char **argv) -> int {
     Lexer lexer = Lexer(file_content);
     Parser parser = Parser(lexer);
 
-    std::optional<std::unique_ptr<Expr>> expr = parser.expr();
-    if (!expr.has_value() && lexer.has_error) {
+    Expr::Ptr expr = parser.expr();
+    if (!expr && lexer.has_error) {
         println("{}", lexer.error);
     }
-    else if (!expr.has_value()) {
+    else if (!expr) {
         std::println("{}", parser.error);
     }
     else {
-        expr.value()->print();
+        expr->print();
     }
 
     return 0;

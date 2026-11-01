@@ -15,15 +15,74 @@ auto Parser::make_error(std::string err, Token &tok) -> void {
     error = std::format("{} at {}:{}", err, tok.line, tok.column);
 }
 
-auto Parser::expr() -> std::optional<Expr::Ptr> {
+auto Parser::block_item() -> BlockStmt::Item {
+    TokenType look_ahead = lexer.next_token(true).type;
+
+    if (look_ahead == TokenType::Typedef) {
+        return type_decl();
+    }
+    else if (look_ahead == TokenType::If) {
+        return if_stmt();
+    }
+    else {
+        return expr_stmt();
+    }
+
+    return static_cast<Decl::Ptr>(nullptr);
+}
+
+// decl
+auto Parser::type_decl() -> Decl::Ptr {
+    lexer.next_token(); // consume "typedef"
+
+    ValType type;
+    Token type_token = lexer.next_token();
+
+    if (type_token.type == TokenType::Int) {
+        type = ValType::Int;
+    }
+    else if (type_token.type == TokenType::Float) {
+        type = ValType::Flt;
+    }
+    else if (type_token.type == TokenType::Identifier && type_table.back().contains(type_token.lexeme)) {
+        type = type_table.back()[type_token.lexeme];
+    }
+    else {
+        make_error("Expect valid type", type_token);
+        return nullptr;
+    }
+
+    Token name_token = lexer.next_token();
+    if (name_token.type != TokenType::Identifier) {
+        make_error("Expect identifier", name_token);
+        return nullptr;
+    }
+    else if (type_table.back().contains(name_token.lexeme)) {
+        make_error("Expect undefined symbol", name_token);
+        return nullptr;
+    }
+
+    type_table.back()[name_token.lexeme] = type;
+    return make_unique<TypeDecl>(type, name_token.lexeme);
+}
+
+// stmt
+auto Parser::expr_stmt() -> Stmt::Ptr {
+    return std::make_unique<ExprStmt>(expr());
+}
+
+auto Parser::if_stmt() -> Stmt::Ptr { }
+
+// expr
+auto Parser::expr() -> Expr::Ptr {
     return expr_bp(0);
 }
 
-auto Parser::assignable() -> std::optional<Expr::Ptr> {
+auto Parser::assignable() -> Expr::Ptr {
     return expr_bp(100);
 }
 
-auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
+auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
     Expr::Ptr return_expr;
     Token tok = lexer.next_token();
 
@@ -31,13 +90,13 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         std::optional<Expr::Ptr> paren_expr = expr();
 
         if (!paren_expr.has_value()) {
-            return std::nullopt;
+            return nullptr;
         }
 
         Token rparen = lexer.next_token();
         if (rparen.type != TokenType::RightParenthesis) {
             make_error("Expect right parenthesis", rparen);
-            return std::nullopt;
+            return nullptr;
         }
 
         return_expr = std::move(paren_expr.value());
@@ -46,12 +105,12 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         std::optional<std::uint64_t> result = prefix_bp(op_type_convert(tok.type));
         if (!result.has_value()) {
             make_error("Expect prefix operator", tok);
-            return std::nullopt;
+            return nullptr;
         }
 
         std::optional<Expr::Ptr> rhs = expr_bp(result.value());
         if (!rhs.has_value()) {
-            return std::nullopt;
+            return nullptr;
         }
 
         return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()));
@@ -73,7 +132,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
     }
     else {
         make_error("Expect identifier or constant", tok);
-        return std::nullopt;
+        return nullptr;
     }
 
     while (true) {
@@ -83,14 +142,14 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
         }
         else if (!op.is_oper()) {
             make_error("Expect infix operator", op);
-            return std::nullopt;
+            return nullptr;
         }
 
         // std::optional<std::pair<std::uint64_t, std::uint64_t>>
         auto bp_result = infix_bp(op_type_convert(op.type));
         if (!bp_result.has_value()) {
             make_error("Expect infix operator", op);
-            return std::nullopt;
+            return nullptr;
         }
 
         auto [l_bp, r_bp] = bp_result.value();
@@ -104,19 +163,19 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> std::optional<Expr::Ptr> {
             continue;
         }
         else if (has_error) {
-            return std::nullopt;
+            return nullptr;
         }
 
         if (try_func(op, return_expr)) {
             continue;
         }
         else if (has_error) {
-            return std::nullopt;
+            return nullptr;
         }
 
         std::optional<Expr::Ptr> rhs = expr_bp(r_bp);
         if (!rhs.has_value()) {
-            return std::nullopt;
+            return nullptr;
         }
 
         return_expr =
