@@ -62,6 +62,22 @@ auto op_type_convert(TokenType tok_type) -> OpType {
     return OpType::Mov;
 }
 
+constexpr auto val_type_to_string(ValType val_type) -> std::string_view {
+    switch (val_type) {
+    case ValType::Flt:
+        return "Float";
+        break;
+    case ValType::Int:
+        return "Int";
+        break;
+
+    // unreachable?
+    case ValType::Str:
+        return "String";
+        break;
+    }
+}
+
 constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
     switch (op_type) {
     case OpType::Add:
@@ -125,7 +141,7 @@ FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(na
 
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
 
-BlockStmt::BlockStmt() : body{} { }
+BlockStmt::BlockStmt() : items{} { }
 
 IfStmt::IfStmt(Expr::Ptr cond_, Stmt::Ptr if_branch_, Stmt::Ptr else_branch_)
     : cond(std::move(cond_)), if_branch(std::move(if_branch_)), else_branch(std::move(else_branch_)) { }
@@ -142,6 +158,64 @@ BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std:
 UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : op(op_), rhs(std::move(rhs_)) { }
 
 FuncExpr::FuncExpr(std::string_view name_) : name(name_), args{} { }
+
+auto TypeDecl::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}TypeDecl {} {}", std::string(indent, ' '), val_type_to_string(type), name);
+}
+
+auto VarDecl::print(std::uint64_t indent = 0) const -> void { }
+
+auto FuncDecl::print(std::uint64_t indent = 0) const -> void { }
+
+auto ExprStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}ExprStmt (", std::string(indent, ' '));
+
+    expr->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
+}
+
+auto BlockStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}BlockStmt (", std::string(indent, ' '));
+
+    if (items.empty()) {
+        std::println("{}*empty*\n{})", std::string(indent + 2, ' '), std::string(indent, ' '));
+        return;
+    }
+
+    for (const BlockStmt::Item &item : items) {
+        std::visit([indent](const auto &ptr) { ptr->print(indent + 2); }, item);
+    }
+
+    std::println("{})", std::string(indent, ' '));
+}
+
+auto IfStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}IfStmt (", std::string(indent, ' '));
+
+    cond->print(indent + 2);
+    if_branch->print(indent + 2);
+
+    if (!else_branch) {
+        std::println("{})", std::string(indent, ' '));
+        return;
+    }
+
+    else_branch->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
+}
+
+auto ForStmt::print(std::uint64_t indent = 0) const -> void { }
+
+auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}WhileStmt (", std::string(indent, ' '));
+
+    cond->print(indent + 2);
+    stmt->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
+}
 
 auto LValue::print(std::uint64_t indent = 0) const -> void {
     std::print("{}LValue {}", std::string(indent, ' '), name);

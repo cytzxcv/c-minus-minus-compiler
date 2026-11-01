@@ -5,6 +5,7 @@
 #include <format>
 #include <optional>
 #include <utility>
+#include <variant>
 
 Parser::Parser(Lexer &lexer_) : lexer(lexer_), type_table(), has_error(false), error("") {
     type_table.emplace_back();
@@ -18,17 +19,23 @@ auto Parser::make_error(std::string err, Token &tok) -> void {
 auto Parser::block_item() -> BlockStmt::Item {
     TokenType look_ahead = lexer.next_token(true).type;
 
-    if (look_ahead == TokenType::Typedef) {
+    switch (look_ahead) {
+    case TokenType::Typedef:
         return type_decl();
-    }
-    else if (look_ahead == TokenType::If) {
+        break;
+    case TokenType::LeftBrace:
+        return block_stmt();
+        break;
+    case TokenType::If:
         return if_stmt();
-    }
-    else {
+        break;
+    case TokenType::While:
+        return while_stmt();
+        break;
+    default:
         return expr_stmt();
+        break;
     }
-
-    return static_cast<Decl::Ptr>(nullptr);
 }
 
 // decl
@@ -44,8 +51,15 @@ auto Parser::type_decl() -> Decl::Ptr {
     else if (type_token.type == TokenType::Float) {
         type = ValType::Flt;
     }
-    else if (type_token.type == TokenType::Identifier && type_table.back().contains(type_token.lexeme)) {
-        type = type_table.back()[type_token.lexeme];
+    else if (type_token.type == TokenType::Identifier) {
+        std::optional<ValType> check_type = get_type(type_token.lexeme);
+
+        if (!check_type) {
+            make_error("Expect valid type", type_token);
+            return nullptr;
+        }
+
+        type = check_type.value();
     }
     else {
         make_error("Expect valid type", type_token);
@@ -62,16 +76,154 @@ auto Parser::type_decl() -> Decl::Ptr {
         return nullptr;
     }
 
+    Token semicolon = lexer.next_token();
+    if (semicolon.type != TokenType::Semicolon) {
+        make_error("Expect semicolon", semicolon);
+        return nullptr;
+    }
+
     type_table.back()[name_token.lexeme] = type;
     return make_unique<TypeDecl>(type, name_token.lexeme);
 }
 
-// stmt
-auto Parser::expr_stmt() -> Stmt::Ptr {
-    return std::make_unique<ExprStmt>(expr());
+auto Parser::get_type(std::string_view name) -> std::optional<ValType> {
+    for (std::size_t i = type_table.size(); i > 0; i--) {
+        auto iter = type_table[i - 1].find(name);
+
+        if (iter != type_table[i - 1].end()) {
+            return iter->second;
+        }
+    }
+
+    return std::nullopt;
 }
 
-auto Parser::if_stmt() -> Stmt::Ptr { }
+// stmt
+auto Parser::stmt() -> Stmt::Ptr {
+    TokenType look_ahead = lexer.next_token(true).type;
+
+    switch (look_ahead) {
+    case TokenType::LeftBrace:
+        return block_stmt();
+        break;
+    case TokenType::If:
+        return if_stmt();
+        break;
+    case TokenType::While:
+        return while_stmt();
+        break;
+    default:
+        return expr_stmt();
+        break;
+    }
+}
+
+auto Parser::block_stmt() -> Stmt::Ptr {
+    lexer.next_token(); // consume "{"
+
+    std::unique_ptr<BlockStmt> return_stmt = std::make_unique<BlockStmt>();
+
+    type_table.emplace_back();
+    TokenType look_ahead = lexer.next_token(true).type;
+
+    while (look_ahead != TokenType::RightBrace) {
+        BlockStmt::Item item = block_item();
+        if (std::visit([](const auto &ptr) { return !ptr; }, item)) {
+            return nullptr;
+        }
+
+        return_stmt->items.emplace_back(std::move(item));
+
+        look_ahead = lexer.next_token(true).type;
+    }
+
+    lexer.next_token(); // consume "}"
+
+    type_table.pop_back();
+    return return_stmt;
+}
+
+auto Parser::expr_stmt() -> Stmt::Ptr {
+    Expr::Ptr return_expr = expr();
+    if (!return_expr) {
+        return nullptr;
+    }
+
+    Token semicolon = lexer.next_token();
+    if (semicolon.type != TokenType::Semicolon) {
+        make_error("Expect semicolon", semicolon);
+        return nullptr;
+    }
+
+    return std::make_unique<ExprStmt>(std::move(return_expr));
+}
+
+auto Parser::if_stmt() -> Stmt::Ptr {
+    lexer.next_token(); // consume "if"
+
+    Token l_paren = lexer.next_token();
+    if (l_paren.type != TokenType::LeftParenthesis) {
+        make_error("Expect left parenthesis", l_paren);
+        return nullptr;
+    }
+
+    Expr::Ptr cond = expr();
+    if (!cond) {
+        return nullptr;
+    }
+
+    Token r_paren = lexer.next_token();
+    if (r_paren.type != TokenType::RightParenthesis) {
+        make_error("Expect right parenthesis", r_paren);
+        return nullptr;
+    }
+
+    Stmt::Ptr if_body = stmt();
+    if (!if_body) {
+        return nullptr;
+    }
+
+    if (lexer.next_token(true).type != TokenType::Else) {
+        return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), nullptr);
+    }
+
+    lexer.next_token(); // consume "else"
+
+    Stmt::Ptr else_body = stmt();
+    if (!else_body) {
+        return nullptr;
+    }
+
+    return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body));
+}
+
+auto Parser::while_stmt() -> Stmt::Ptr {
+    lexer.next_token(); // consume "while"
+
+    Token l_paren = lexer.next_token();
+    if (l_paren.type != TokenType::LeftParenthesis) {
+        make_error("Expect left parenthesis", l_paren);
+        return nullptr;
+    }
+
+    Expr::Ptr cond = expr();
+    if (!cond) {
+        return nullptr;
+    }
+
+    Token r_paren = lexer.next_token();
+    if (r_paren.type != TokenType::RightParenthesis) {
+        make_error("Expect right parenthesis", r_paren);
+        return nullptr;
+    }
+
+    Stmt::Ptr body = stmt();
+    if (!body) {
+        return nullptr;
+    }
+
+    return std::make_unique<WhileStmt>(std::move(cond), std::move(body));
+}
 
 // expr
 auto Parser::expr() -> Expr::Ptr {
@@ -117,14 +269,17 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
     }
     else if (tok.is_value()) {
         switch (tok.type) {
-        case TokenType::Identifier:
-            return_expr = std::make_unique<LValue>(tok.lexeme);
+        case TokenType::String:
+            return_expr = std::make_unique<ConstExpr>(ValType::Str, tok.lexeme);
             break;
         case TokenType::Integer:
             return_expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme);
             break;
         case TokenType::Floating:
             return_expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme);
+            break;
+        case TokenType::Identifier:
+            return_expr = std::make_unique<LValue>(tok.lexeme);
             break;
         default:
             // unreachable

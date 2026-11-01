@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -21,13 +22,19 @@ private:
     // decl
     auto type_decl() -> Decl::Ptr;
 
+    auto get_type(std::string_view) -> std::optional<ValType>;
+
     // stmt
+    auto block_stmt() -> Stmt::Ptr;
     auto expr_stmt() -> Stmt::Ptr;
     auto if_stmt() -> Stmt::Ptr;
+    auto while_stmt() -> Stmt::Ptr;
 
     // expr
-    auto expr_bp(std::uint64_t) -> Expr::Ptr;
+    auto expr() -> Expr::Ptr;
     auto assignable() -> Expr::Ptr;
+
+    auto expr_bp(std::uint64_t) -> Expr::Ptr;
 
     auto try_index(Token &, Expr::Ptr &) -> bool;
     auto try_func(Token &, Expr::Ptr &) -> bool;
@@ -41,5 +48,5 @@ public:
 
     Parser(Lexer &);
 
-    auto expr() -> Expr::Ptr;
+    auto stmt() -> Stmt::Ptr;
 };

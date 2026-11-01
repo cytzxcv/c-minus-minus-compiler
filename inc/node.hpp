@@ -12,6 +12,7 @@
 enum class ValType {
     Int, // int
     Flt, // float
+    Str, // string
 };
 
 enum class OpType {
@@ -34,6 +35,8 @@ enum class OpType {
 };
 
 auto op_type_convert(TokenType) -> OpType;
+
+constexpr auto val_type_to_string(ValType) -> std::string_view;
 constexpr auto op_type_to_string(OpType) -> std::string_view;
 
 class Decl {
@@ -41,6 +44,7 @@ public:
     using Ptr = std::unique_ptr<Decl>;
 
     virtual ~Decl() = default;
+    virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 };
 
 class Stmt {
@@ -48,6 +52,7 @@ public:
     using Ptr = std::unique_ptr<Stmt>;
 
     virtual ~Stmt() = default;
+    virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 };
 
 class Expr {
@@ -70,12 +75,25 @@ public:
     auto print(std::uint64_t) const -> void override;
 };
 
+class BlockStmt : public Stmt {
+public:
+    using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
+
+    std::vector<Item> items;
+
+    BlockStmt();
+
+    auto print(std::uint64_t) const -> void override;
+};
+
 class TypeDecl : public Decl {
 public:
     ValType type;
     std::string_view name;
 
     TypeDecl(ValType, std::string_view);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class VarDecl : public Decl {
@@ -86,19 +104,22 @@ public:
     std::vector<Var> vars;
 
     VarDecl(ValType);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class FuncDecl : public Decl {
 public:
-    using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
     using Param = std::pair<ValType, LValue::Ptr>;
 
     ValType type;
     std::string_view name;
     std::vector<Param> params;
-    std::vector<Item> body;
+    std::unique_ptr<BlockStmt> body;
 
     FuncDecl(ValType, std::string_view);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class ExprStmt : public Stmt {
@@ -106,15 +127,8 @@ public:
     Expr::Ptr expr;
 
     ExprStmt(Expr::Ptr);
-};
 
-class BlockStmt : public Stmt {
-public:
-    using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
-
-    std::vector<Item> body;
-
-    BlockStmt();
+    auto print(std::uint64_t) const -> void override;
 };
 
 class IfStmt : public Stmt {
@@ -123,6 +137,8 @@ public:
     Stmt::Ptr if_branch, else_branch;
 
     IfStmt(Expr::Ptr, Stmt::Ptr, Stmt::Ptr);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class ForStmt : public Stmt {
@@ -134,6 +150,8 @@ public:
     Stmt::Ptr stmt;
 
     ForStmt(Init, Expr::Ptr, Expr::Ptr, Stmt::Ptr);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class WhileStmt : public Stmt {
@@ -142,6 +160,8 @@ public:
     Stmt::Ptr stmt;
 
     WhileStmt(Expr::Ptr, Stmt::Ptr);
+
+    auto print(std::uint64_t) const -> void override;
 };
 
 class ConstExpr : public Expr {

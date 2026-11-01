@@ -135,6 +135,7 @@ auto Token::print() -> void {
 
 auto Token::is_value() -> bool {
     switch (type) {
+    case TokenType::String:
     case TokenType::Integer:
     case TokenType::Floating:
     case TokenType::Identifier:
@@ -177,6 +178,7 @@ auto Token::is_delim() -> bool {
     case TokenType::RightBracket:
     case TokenType::RightParenthesis:
     case TokenType::Comma:
+    case TokenType::Semicolon:
         return true;
 
     default:
