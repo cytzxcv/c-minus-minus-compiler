@@ -37,15 +37,19 @@ auto main(int argc, char **argv) -> int {
     Lexer lexer = Lexer(file_content);
     Parser parser = Parser(lexer);
 
-    Decl::Ptr decl = parser.decl();
-    if (!decl && lexer.has_error) {
+    Prog::Ptr program = parser.parse();
+    if (!program && lexer.has_error) {
         println("{}", lexer.error);
+
+        return 5;
     }
-    else if (!decl) {
+    else if (!program) {
         std::println("{}", parser.error);
+
+        return 6;
     }
     else {
-        decl->print();
+        program->print();
     }
 
     return 0;

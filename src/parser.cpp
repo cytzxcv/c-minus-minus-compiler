@@ -11,6 +11,24 @@ Parser::Parser(Lexer &lexer_) : lexer(lexer_), type_table(), has_error(false), e
     type_table.emplace_back();
 }
 
+auto Parser::parse() -> Prog::Ptr {
+    Prog::Ptr return_prog = std::make_unique<Prog>();
+
+    TokenType look_ahead = lexer.next_token(true).type;
+    while (look_ahead != TokenType::Eof) {
+        Decl::Ptr check_decl = decl();
+        if (!check_decl) {
+            return nullptr;
+        }
+
+        return_prog->decls.emplace_back(std::move(check_decl));
+
+        look_ahead = lexer.next_token(true).type;
+    }
+
+    return return_prog;
+}
+
 auto Parser::make_error(std::string err, Token &tok) -> void {
     has_error = true;
     error = std::format("{} at {}:{}", err, tok.line, tok.column);
@@ -18,6 +36,11 @@ auto Parser::make_error(std::string err, Token &tok) -> void {
 
 auto Parser::block_item() -> BlockStmt::Item {
     Token look_ahead = lexer.next_token(true);
+
+    while (look_ahead.type == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+        look_ahead = lexer.next_token(true);
+    }
 
     if (look_ahead.type == TokenType::Typedef || get_type(look_ahead).has_value()) {
         return decl();
@@ -29,6 +52,11 @@ auto Parser::block_item() -> BlockStmt::Item {
 // decl
 auto Parser::decl() -> Decl::Ptr {
     TokenType look_ahead = lexer.next_token(true).type;
+
+    while (look_ahead == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+        look_ahead = lexer.next_token(true).type;
+    }
 
     switch (look_ahead) {
     case TokenType::Typedef:
@@ -98,7 +126,18 @@ auto Parser::var_func_decl() -> Decl::Ptr {
     return var_decl(type, std::move(lvalue));
 }
 
-auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> Decl::Ptr {
+auto Parser::var_decl_default() -> VarDecl::Ptr {
+    ValType type = get_type(lexer.next_token()).value();
+
+    LValue::Ptr lvalue = assignable();
+    if (!lvalue) {
+        return nullptr;
+    }
+
+    return var_decl(type, std::move(lvalue));
+}
+
+auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
     std::unique_ptr<VarDecl> return_decl = std::make_unique<VarDecl>(type);
     bool var_added = false;
 
@@ -262,12 +301,20 @@ auto Parser::get_type(Token token) -> std::optional<ValType> {
 auto Parser::stmt() -> Stmt::Ptr {
     TokenType look_ahead = lexer.next_token(true).type;
 
+    while (look_ahead == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+        look_ahead = lexer.next_token(true).type;
+    }
+
     switch (look_ahead) {
     case TokenType::LeftBrace:
         return block_stmt();
         break;
     case TokenType::If:
         return if_stmt();
+        break;
+    case TokenType::For:
+        return for_stmt();
         break;
     case TokenType::While:
         return while_stmt();
@@ -360,7 +407,95 @@ auto Parser::if_stmt() -> Stmt::Ptr {
     return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body));
 }
 
-auto Parser::for_stmt() -> Stmt::Ptr { }
+auto Parser::for_stmt() -> Stmt::Ptr {
+    lexer.next_token(); // consume "for"
+
+    Token lparen = lexer.next_token();
+    if (lparen.type != TokenType::LeftParenthesis) {
+        make_error("Expect left parenthesis", lparen);
+        return nullptr;
+    }
+
+    ForStmt::Init init;
+
+    Token init_start = lexer.next_token(true);
+    if (init_start.type == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+
+        init = std::monostate();
+    }
+    else if (get_type(init_start).has_value()) {
+        VarDecl::Ptr check_init = var_decl_default();
+        if (!check_init) {
+            return nullptr;
+        }
+
+        init = std::move(check_init);
+    }
+    else {
+        Expr::Ptr check_init = expr();
+        if (!check_init) {
+            return nullptr;
+        }
+
+        Token semicolon = lexer.next_token();
+        if (semicolon.type != TokenType::Semicolon) {
+            make_error("Expect semicolon", semicolon);
+            return nullptr;
+        }
+
+        init = std::move(check_init);
+    }
+
+    Expr::Ptr cond;
+
+    Token cond_start = lexer.next_token(true);
+    if (cond_start.type == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+
+        cond = nullptr;
+    }
+    else {
+        cond = expr();
+        if (!cond) {
+            return nullptr;
+        }
+
+        Token semicolon = lexer.next_token();
+        if (semicolon.type != TokenType::Semicolon) {
+            make_error("Expect semicolon", semicolon);
+            return nullptr;
+        }
+    }
+
+    Expr::Ptr iter;
+
+    Token iter_start = lexer.next_token(true);
+    if (iter_start.type == TokenType::RightParenthesis) {
+        lexer.next_token(); // consume ")"
+
+        iter = nullptr;
+    }
+    else {
+        iter = expr();
+        if (!iter) {
+            return nullptr;
+        }
+
+        Token rparen = lexer.next_token();
+        if (rparen.type != TokenType::RightParenthesis) {
+            make_error("Expect right parenthesis", rparen);
+            return nullptr;
+        }
+    }
+
+    Stmt::Ptr body = stmt();
+    if (!body) {
+        return nullptr;
+    }
+
+    return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(iter), std::move(body));
+}
 
 auto Parser::while_stmt() -> Stmt::Ptr {
     lexer.next_token(); // consume "while"
@@ -603,7 +738,7 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
     return true;
 }
 
-auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
+constexpr auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
     switch (op) {
     case OpType::Mov:
         return std::pair{11, 10};
@@ -644,7 +779,7 @@ auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::
     return std::nullopt;
 }
 
-auto Parser::prefix_bp(OpType op) -> std::optional<std::uint64_t> {
+constexpr auto Parser::prefix_bp(OpType op) -> std::optional<std::uint64_t> {
     switch (op) {
     case OpType::Add:
     case OpType::Sub:

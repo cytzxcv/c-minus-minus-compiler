@@ -27,7 +27,6 @@ private:
     auto is_white(char) -> bool;
     auto is_alpha(char) -> bool;
     auto is_num(char) -> bool;
-    auto is_alnum(char) -> bool;
 
     auto str() -> std::pair<Token, std::uint64_t>;
     auto num() -> std::pair<Token, std::uint64_t>;

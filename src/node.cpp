@@ -132,6 +132,8 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
     }
 }
 
+Prog::Prog() : decls{} { }
+
 LValue::LValue(std::string_view name_) : name(name_), dims{} { }
 
 TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(name_) { }
@@ -161,6 +163,12 @@ BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std:
 UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : op(op_), rhs(std::move(rhs_)) { }
 
 FuncExpr::FuncExpr(std::string_view name_) : name(name_), args{} { }
+
+auto Prog::print() const -> void {
+    for (const Decl::Ptr &decl : decls) {
+        decl->print();
+    }
+}
 
 auto TypeDecl::print(std::uint64_t indent = 0) const -> void {
     std::println("{}TypeDecl {} {}", std::string(indent, ' '), val_type_to_string(type), name);
@@ -240,7 +248,37 @@ auto IfStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{})", std::string(indent, ' '));
 }
 
-auto ForStmt::print(std::uint64_t indent = 0) const -> void { }
+auto ForStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}ForStmt (", std::string(indent, ' '));
+
+    if (init.index() == 0) {
+        std::println("{}*empty*", std::string(indent + 2, ' '));
+    }
+    else if (init.index() == 1) {
+        std::get<VarDecl::Ptr>(init)->print(indent + 2);
+    }
+    else {
+        std::get<Expr::Ptr>(init)->print(indent + 2);
+    }
+
+    if (!cond) {
+        std::println("{}*empty*", std::string(indent + 2, ' '));
+    }
+    else {
+        cond->print(indent + 2);
+    }
+
+    if (!iter) {
+        std::println("{}*empty*", std::string(indent + 2, ' '));
+    }
+    else {
+        iter->print(indent + 2);
+    }
+
+    stmt->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
+}
 
 auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}WhileStmt (", std::string(indent, ' '));

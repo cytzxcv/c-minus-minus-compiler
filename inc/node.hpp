@@ -64,6 +64,17 @@ public:
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 };
 
+class Prog {
+public:
+    using Ptr = std::unique_ptr<Prog>;
+
+    std::vector<Decl::Ptr> decls;
+
+    Prog();
+
+    auto print() const -> void;
+};
+
 class LValue : public Expr {
 public:
     using Ptr = std::unique_ptr<LValue>;
@@ -88,24 +99,25 @@ public:
     auto print(std::uint64_t) const -> void override;
 };
 
-class TypeDecl : public Decl {
-public:
-    ValType type;
-    std::string_view name;
-
-    TypeDecl(ValType, std::string_view);
-
-    auto print(std::uint64_t) const -> void override;
-};
-
 class VarDecl : public Decl {
 public:
+    using Ptr = std::unique_ptr<VarDecl>;
     using Var = std::pair<LValue::Ptr, Expr::Ptr>;
 
     ValType type;
     std::vector<Var> vars;
 
     VarDecl(ValType);
+
+    auto print(std::uint64_t) const -> void override;
+};
+
+class TypeDecl : public Decl {
+public:
+    ValType type;
+    std::string_view name;
+
+    TypeDecl(ValType, std::string_view);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -117,7 +129,7 @@ public:
     ValType type;
     std::string_view name;
     std::vector<Param> params;
-    std::unique_ptr<BlockStmt> body;
+    BlockStmt::Ptr body;
 
     FuncDecl(ValType, std::string_view);
 
@@ -145,7 +157,7 @@ public:
 
 class ForStmt : public Stmt {
 public:
-    using Init = std::variant<std::monostate, std::unique_ptr<VarDecl>, Expr::Ptr>;
+    using Init = std::variant<std::monostate, VarDecl::Ptr, Expr::Ptr>;
 
     Init init;
     Expr::Ptr cond, iter;

@@ -47,6 +47,7 @@ auto Lexer::next_token(bool is_peeking) -> Token {
         }
         return token;
     }
+
     auto [token, offset] = oper();
     if (!is_peeking) {
         advance(offset);
@@ -149,15 +150,11 @@ auto Lexer::is_white(char c) -> bool {
 }
 
 auto Lexer::is_alpha(char c) -> bool {
-    return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || c == '_';
+    return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
 auto Lexer::is_num(char c) -> bool {
     return '0' <= c && c <= '9';
-}
-
-auto Lexer::is_alnum(char c) -> bool {
-    return is_alpha(c) || is_num(c);
 }
 
 // "([^\\"]|(\\n)|(\\t)|(\\r)|(\\\\)|(\\')|(\\")|(\\a))*"
@@ -286,7 +283,7 @@ auto Lexer::iden() -> std::pair<Token, std::uint64_t> {
     TokenType return_type;
     std::uint64_t offset = 1;
 
-    while (pos + offset < source.length() && is_alnum(peek(offset))) {
+    while (pos + offset < source.length() && (is_alpha(peek(offset)) || is_num(peek(offset)) || peek(offset) == '_')) {
         offset++;
     }
 

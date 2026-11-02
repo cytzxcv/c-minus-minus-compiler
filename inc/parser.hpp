@@ -20,9 +20,12 @@ private:
     auto block_item() -> BlockStmt::Item;
 
     // decl
+    auto decl() -> Decl::Ptr;
+
     auto type_decl() -> Decl::Ptr;
     auto var_func_decl() -> Decl::Ptr;
-    auto var_decl(ValType, LValue::Ptr) -> Decl::Ptr;
+    auto var_decl_default() -> VarDecl::Ptr;
+    auto var_decl(ValType, LValue::Ptr) -> VarDecl::Ptr;
     auto func_decl(ValType, std::string_view) -> Decl::Ptr;
 
     auto get_type(Token) -> std::optional<ValType>;
@@ -46,14 +49,14 @@ private:
     auto try_index(Token &, Expr::Ptr &) -> bool;
     auto try_func(Token &, Expr::Ptr &) -> bool;
 
-    auto infix_bp(OpType) -> std::optional<std::pair<std::uint64_t, std::uint64_t>>;
-    auto prefix_bp(OpType) -> std::optional<std::uint64_t>;
+    constexpr auto infix_bp(OpType) -> std::optional<std::pair<std::uint64_t, std::uint64_t>>;
+    constexpr auto prefix_bp(OpType) -> std::optional<std::uint64_t>;
 
 public:
     bool has_error;
     std::string error;
 
-    auto decl() -> Decl::Ptr;
+    auto parse() -> Prog::Ptr;
 
     Parser(Lexer &);
 };
