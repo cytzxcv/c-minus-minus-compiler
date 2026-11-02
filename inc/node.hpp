@@ -70,7 +70,6 @@ public:
 
     std::string_view name;
     std::vector<Expr::Ptr> dims;
-    bool is_param;
 
     LValue(std::string_view);
 

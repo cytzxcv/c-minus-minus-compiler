@@ -164,17 +164,28 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> Decl::Ptr {
 }
 
 auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
-    Token left_paren = lexer.next_token();
+    Token lparen = lexer.next_token();
 
     if (type_table.size() > 1) {
-        make_error("Function definition is only allowed for global scope", left_paren);
+        make_error("Function definition is only allowed for global scope", lparen);
+        return nullptr;
     }
 
     std::unique_ptr<FuncDecl> return_decl = std::make_unique<FuncDecl>(type, name);
 
     Token look_ahead = lexer.next_token(true);
+
     while (look_ahead.type != TokenType::RightParenthesis) {
         Token param_type_token = lexer.next_token();
+
+        if (param_type_token.type == TokenType::Void && !return_decl->params.empty()) {
+            make_error("Function signature cannot mix regular types and void", param_type_token);
+            return nullptr;
+        }
+        else if (param_type_token.type == TokenType::Void) {
+            break;
+        }
+
         std::optional<ValType> param_type = get_type(param_type_token);
         if (!param_type) {
             make_error("Expect valid type", param_type_token);
@@ -185,23 +196,27 @@ auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
         if (!lvalue) {
             return nullptr;
         }
-        lvalue->is_param = true;
 
         look_ahead = lexer.next_token();
         if (look_ahead.type != TokenType::Comma && look_ahead.type != TokenType::RightParenthesis) {
             make_error("Expect comma or right parenthesis", look_ahead);
+            return nullptr;
         }
 
         return_decl->params.emplace_back(std::make_pair(param_type.value(), std::move(lvalue)));
     }
 
     if (return_decl->params.empty()) {
-        lexer.next_token(); // consume ")"
+        Token rparen = lexer.next_token();
+        if (rparen.type != TokenType::RightParenthesis) {
+            make_error("Expect right parenthesis", rparen);
+            return nullptr;
+        }
     }
 
-    Token left_brace = lexer.next_token(true);
-    if (left_brace.type != TokenType::LeftBrace) {
-        make_error("Expect left brace", left_brace);
+    Token lbrace = lexer.next_token(true);
+    if (lbrace.type != TokenType::LeftBrace) {
+        make_error("Expect left brace", lbrace);
         return nullptr;
     }
 
@@ -309,9 +324,9 @@ auto Parser::expr_stmt() -> Stmt::Ptr {
 auto Parser::if_stmt() -> Stmt::Ptr {
     lexer.next_token(); // consume "if"
 
-    Token l_paren = lexer.next_token();
-    if (l_paren.type != TokenType::LeftParenthesis) {
-        make_error("Expect left parenthesis", l_paren);
+    Token lparen = lexer.next_token();
+    if (lparen.type != TokenType::LeftParenthesis) {
+        make_error("Expect left parenthesis", lparen);
         return nullptr;
     }
 
@@ -320,9 +335,9 @@ auto Parser::if_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    Token r_paren = lexer.next_token();
-    if (r_paren.type != TokenType::RightParenthesis) {
-        make_error("Expect right parenthesis", r_paren);
+    Token rparen = lexer.next_token();
+    if (rparen.type != TokenType::RightParenthesis) {
+        make_error("Expect right parenthesis", rparen);
         return nullptr;
     }
 
@@ -350,9 +365,9 @@ auto Parser::for_stmt() -> Stmt::Ptr { }
 auto Parser::while_stmt() -> Stmt::Ptr {
     lexer.next_token(); // consume "while"
 
-    Token l_paren = lexer.next_token();
-    if (l_paren.type != TokenType::LeftParenthesis) {
-        make_error("Expect left parenthesis", l_paren);
+    Token lparen = lexer.next_token();
+    if (lparen.type != TokenType::LeftParenthesis) {
+        make_error("Expect left parenthesis", lparen);
         return nullptr;
     }
 
@@ -361,9 +376,9 @@ auto Parser::while_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    Token r_paren = lexer.next_token();
-    if (r_paren.type != TokenType::RightParenthesis) {
-        make_error("Expect right parenthesis", r_paren);
+    Token rparen = lexer.next_token();
+    if (rparen.type != TokenType::RightParenthesis) {
+        make_error("Expect right parenthesis", rparen);
         return nullptr;
     }
 

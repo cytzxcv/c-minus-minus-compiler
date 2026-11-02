@@ -132,7 +132,7 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
     }
 }
 
-LValue::LValue(std::string_view name_) : name(name_), dims{}, is_param(false) { }
+LValue::LValue(std::string_view name_) : name(name_), dims{} { }
 
 TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(name_) { }
 
@@ -191,12 +191,14 @@ auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
     }
     else {
         for (const Param &param : params) {
-            std::print("{}{} ", std::string(indent + 2, ' '), val_type_to_string(param.first));
-            param.second->print(indent + 4);
+            std::println("{}{}", std::string(indent + 2, ' '), val_type_to_string(param.first));
+            param.second->print(indent + 2);
         }
     }
 
     body->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
 }
 
 auto ExprStmt::print(std::uint64_t indent = 0) const -> void {
@@ -258,12 +260,7 @@ auto ReturnStmt::print(std::uint64_t indent = 0) const -> void {
 }
 
 auto LValue::print(std::uint64_t indent = 0) const -> void {
-    if (is_param) {
-        std::print("{}", name);
-    }
-    else {
-        std::print("{}LValue {}", std::string(indent, ' '), name);
-    }
+    std::print("{}LValue {}", std::string(indent, ' '), name);
 
     if (dims.empty()) {
         std::println();
