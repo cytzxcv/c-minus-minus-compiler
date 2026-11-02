@@ -22,7 +22,7 @@ private:
     // decl
     auto type_decl() -> Decl::Ptr;
     auto var_func_decl() -> Decl::Ptr;
-    auto var_decl(ValType, std::string_view) -> Decl::Ptr;
+    auto var_decl(ValType, LValue::Ptr) -> Decl::Ptr;
     auto func_decl(ValType, std::string_view) -> Decl::Ptr;
 
     auto get_type(Token) -> std::optional<ValType>;
@@ -33,7 +33,9 @@ private:
     auto block_stmt() -> BlockStmt::Ptr;
     auto expr_stmt() -> Stmt::Ptr;
     auto if_stmt() -> Stmt::Ptr;
+    auto for_stmt() -> Stmt::Ptr;
     auto while_stmt() -> Stmt::Ptr;
+    auto return_stmt() -> Stmt::Ptr;
 
     // expr
     auto expr() -> Expr::Ptr;

@@ -77,24 +77,91 @@ auto Parser::type_decl() -> Decl::Ptr {
 }
 
 auto Parser::var_func_decl() -> Decl::Ptr {
-    ValType type = get_type(lexer.next_token()).value();
+    Token type_token = lexer.next_token();
+    std::optional<ValType> check_type = get_type(type_token);
 
-    Token name_token = lexer.next_token();
-    if (name_token.type != TokenType::Identifier) {
-        make_error("Expect identifier", name_token);
+    if (!check_type) {
+        make_error("Expect valid type", type_token);
+        return nullptr;
+    }
+    ValType type = check_type.value();
+
+    LValue::Ptr lvalue = assignable();
+    if (!lvalue) {
         return nullptr;
     }
 
-    std::string_view name = name_token.lexeme;
-
-    if (lexer.next_token(true).type == TokenType::LeftParenthesis) {
-        return func_decl(type, name);
+    if (lvalue->dims.empty() && lexer.next_token(true).type == TokenType::LeftParenthesis) {
+        return func_decl(type, lvalue->name);
     }
 
-    return var_decl(type, name);
+    return var_decl(type, std::move(lvalue));
 }
 
-auto Parser::var_decl(ValType type, std::string_view name) -> Decl::Ptr { }
+auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> Decl::Ptr {
+    std::unique_ptr<VarDecl> return_decl = std::make_unique<VarDecl>(type);
+    bool var_added = false;
+
+    Token delim = lexer.next_token();
+    if (delim.type == TokenType::Assign) {
+        Expr::Ptr init_expr = expr();
+        if (!init_expr) {
+            return nullptr;
+        }
+
+        return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), std::move(init_expr)));
+        var_added = true;
+
+        delim = lexer.next_token();
+    }
+
+    if (!var_added) {
+        return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), nullptr));
+    }
+
+    if (delim.type == TokenType::Semicolon) {
+        return return_decl;
+    }
+    else if (delim.type != TokenType::Comma) {
+        make_error("Expect assignment or comma or semicolon", delim);
+        return nullptr;
+    }
+
+    Token look_ahead = lexer.next_token(true);
+    while (look_ahead.type != TokenType::Semicolon) {
+        var_added = false;
+
+        LValue::Ptr lvalue = assignable();
+        if (!lvalue) {
+            return nullptr;
+        }
+
+        look_ahead = lexer.next_token();
+
+        if (look_ahead.type == TokenType::Assign) {
+            Expr::Ptr init_expr = expr();
+            if (!init_expr) {
+                return nullptr;
+            }
+
+            return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), std::move(init_expr)));
+            var_added = true;
+
+            look_ahead = lexer.next_token();
+        }
+
+        if (!var_added) {
+            return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), nullptr));
+        }
+
+        if (look_ahead.type != TokenType::Comma && look_ahead.type != TokenType::Semicolon) {
+            make_error("Expect assignment or comma or semicolon", delim);
+            return nullptr;
+        }
+    }
+
+    return return_decl;
+}
 
 auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
     Token left_paren = lexer.next_token();
@@ -121,7 +188,6 @@ auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
         lvalue->is_param = true;
 
         look_ahead = lexer.next_token();
-
         if (look_ahead.type != TokenType::Comma && look_ahead.type != TokenType::RightParenthesis) {
             make_error("Expect comma or right parenthesis", look_ahead);
         }
@@ -150,6 +216,10 @@ auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
 }
 
 auto Parser::get_type(Token token) -> std::optional<ValType> {
+    if (token.type == TokenType::Void) {
+        return ValType::Void;
+    }
+
     if (token.type == TokenType::Int) {
         return ValType::Int;
     }
@@ -187,6 +257,9 @@ auto Parser::stmt() -> Stmt::Ptr {
     case TokenType::While:
         return while_stmt();
         break;
+    case TokenType::Return:
+        return return_stmt();
+        break;
     default:
         return expr_stmt();
         break;
@@ -196,7 +269,7 @@ auto Parser::stmt() -> Stmt::Ptr {
 auto Parser::block_stmt() -> BlockStmt::Ptr {
     lexer.next_token(); // consume "{"
 
-    BlockStmt::Ptr return_stmt = std::make_unique<BlockStmt>();
+    BlockStmt::Ptr block = std::make_unique<BlockStmt>();
 
     type_table.emplace_back();
     TokenType look_ahead = lexer.next_token(true).type;
@@ -207,7 +280,7 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
             return nullptr;
         }
 
-        return_stmt->items.emplace_back(std::move(item));
+        block->items.emplace_back(std::move(item));
 
         look_ahead = lexer.next_token(true).type;
     }
@@ -215,7 +288,7 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
     lexer.next_token(); // consume "}"
 
     type_table.pop_back();
-    return return_stmt;
+    return block;
 }
 
 auto Parser::expr_stmt() -> Stmt::Ptr {
@@ -272,6 +345,8 @@ auto Parser::if_stmt() -> Stmt::Ptr {
     return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body));
 }
 
+auto Parser::for_stmt() -> Stmt::Ptr { }
+
 auto Parser::while_stmt() -> Stmt::Ptr {
     lexer.next_token(); // consume "while"
 
@@ -298,6 +373,23 @@ auto Parser::while_stmt() -> Stmt::Ptr {
     }
 
     return std::make_unique<WhileStmt>(std::move(cond), std::move(body));
+}
+
+auto Parser::return_stmt() -> Stmt::Ptr {
+    lexer.next_token(); // consume "return"
+
+    Expr::Ptr return_expr = expr();
+    if (!return_expr) {
+        return nullptr;
+    }
+
+    Token semicolon = lexer.next_token();
+    if (semicolon.type != TokenType::Semicolon) {
+        make_error("Expect semicolon", semicolon);
+        return nullptr;
+    }
+
+    return std::make_unique<ReturnStmt>(std::move(return_expr));
 }
 
 // expr

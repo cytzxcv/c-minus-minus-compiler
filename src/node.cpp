@@ -64,6 +64,9 @@ auto op_type_convert(TokenType tok_type) -> OpType {
 
 constexpr auto val_type_to_string(ValType val_type) -> std::string_view {
     switch (val_type) {
+    case ValType::Void:
+        return "Void";
+        break;
     case ValType::Flt:
         return "Float";
         break;
@@ -149,6 +152,8 @@ ForStmt::ForStmt(ForStmt::Init init_, Expr::Ptr cond_, Expr::Ptr iter_, Stmt::Pt
 
 WhileStmt::WhileStmt(Expr::Ptr cond_, Stmt::Ptr stmt_) : cond(std::move(cond_)), stmt(std::move(stmt_)) { }
 
+ReturnStmt::ReturnStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
+
 ConstExpr::ConstExpr(ValType type_, std::string_view value_) : type(type_), value(value_) { }
 
 BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std::move(lhs_)), rhs(std::move(rhs_)) { }
@@ -161,23 +166,35 @@ auto TypeDecl::print(std::uint64_t indent = 0) const -> void {
     std::println("{}TypeDecl {} {}", std::string(indent, ' '), val_type_to_string(type), name);
 }
 
-auto VarDecl::print(std::uint64_t indent = 0) const -> void { }
+auto VarDecl::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}VarDecl {} (", std::string(indent, ' '), val_type_to_string(type));
 
-auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
-    std::println("{}FuncDecl {} {} (", std::string(indent, ' '), val_type_to_string(type), name);
-    std::println("{}Params (", std::string(indent + 2, ' '));
+    for (const Var &var : vars) {
+        var.first->print(indent + 2);
 
-    if (params.empty()) {
-        std::println("{}*empty*", std::string(indent + 4, ' '));
-    }
-    else {
-        for (const Param &param : params) {
-            std::print("{}{} ", std::string(indent + 4, ' '), val_type_to_string(param.first));
-            param.second->print(indent + 4);
+        if (!var.second) {
+            std::println("{}*empty*", std::string(indent + 2, ' '));
+        }
+        else {
+            var.second->print(indent + 2);
         }
     }
 
-    std::println("{})", std::string(indent + 2, ' '));
+    std::println("{})", std::string(indent, ' '));
+}
+
+auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}FuncDecl {} {} (", std::string(indent, ' '), val_type_to_string(type), name);
+
+    if (params.empty()) {
+        std::println("{}*empty*", std::string(indent + 2, ' '));
+    }
+    else {
+        for (const Param &param : params) {
+            std::print("{}{} ", std::string(indent + 2, ' '), val_type_to_string(param.first));
+            param.second->print(indent + 4);
+        }
+    }
 
     body->print(indent + 2);
 }
@@ -228,6 +245,14 @@ auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
 
     cond->print(indent + 2);
     stmt->print(indent + 2);
+
+    std::println("{})", std::string(indent, ' '));
+}
+
+auto ReturnStmt::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}ReturnStmt (", std::string(indent, ' '));
+
+    expr->print(indent + 2);
 
     std::println("{})", std::string(indent, ' '));
 }

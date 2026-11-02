@@ -10,9 +10,10 @@
 #include <vector>
 
 enum class ValType {
-    Int, // int
-    Flt, // float
-    Str, // string
+    Void, // void
+    Int,  // int
+    Flt,  // float
+    Str,  // string
 };
 
 enum class OpType {
@@ -162,6 +163,15 @@ public:
     Stmt::Ptr stmt;
 
     WhileStmt(Expr::Ptr, Stmt::Ptr);
+
+    auto print(std::uint64_t) const -> void override;
+};
+
+class ReturnStmt : public Stmt {
+public:
+    Expr::Ptr expr;
+
+    ReturnStmt(Expr::Ptr);
 
     auto print(std::uint64_t) const -> void override;
 };
