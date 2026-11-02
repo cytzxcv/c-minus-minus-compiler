@@ -69,6 +69,7 @@ public:
 
     std::string_view name;
     std::vector<Expr::Ptr> dims;
+    bool is_param;
 
     LValue(std::string_view);
 
@@ -77,6 +78,7 @@ public:
 
 class BlockStmt : public Stmt {
 public:
+    using Ptr = std::unique_ptr<BlockStmt>;
     using Item = std::variant<Decl::Ptr, Stmt::Ptr>;
 
     std::vector<Item> items;

@@ -70,8 +70,6 @@ constexpr auto val_type_to_string(ValType val_type) -> std::string_view {
     case ValType::Int:
         return "Int";
         break;
-
-    // unreachable?
     case ValType::Str:
         return "String";
         break;
@@ -131,13 +129,13 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
     }
 }
 
-LValue::LValue(std::string_view name_) : name(name_), dims{} { }
+LValue::LValue(std::string_view name_) : name(name_), dims{}, is_param(false) { }
 
 TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(name_) { }
 
 VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
 
-FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body{} { }
+FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body(nullptr) { }
 
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
 
@@ -165,7 +163,24 @@ auto TypeDecl::print(std::uint64_t indent = 0) const -> void {
 
 auto VarDecl::print(std::uint64_t indent = 0) const -> void { }
 
-auto FuncDecl::print(std::uint64_t indent = 0) const -> void { }
+auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
+    std::println("{}FuncDecl {} {} (", std::string(indent, ' '), val_type_to_string(type), name);
+    std::println("{}Params (", std::string(indent + 2, ' '));
+
+    if (params.empty()) {
+        std::println("{}*empty*", std::string(indent + 4, ' '));
+    }
+    else {
+        for (const Param &param : params) {
+            std::print("{}{} ", std::string(indent + 4, ' '), val_type_to_string(param.first));
+            param.second->print(indent + 4);
+        }
+    }
+
+    std::println("{})", std::string(indent + 2, ' '));
+
+    body->print(indent + 2);
+}
 
 auto ExprStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}ExprStmt (", std::string(indent, ' '));
@@ -218,7 +233,12 @@ auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
 }
 
 auto LValue::print(std::uint64_t indent = 0) const -> void {
-    std::print("{}LValue {}", std::string(indent, ' '), name);
+    if (is_param) {
+        std::print("{}", name);
+    }
+    else {
+        std::print("{}LValue {}", std::string(indent, ' '), name);
+    }
 
     if (dims.empty()) {
         std::println();
@@ -239,7 +259,7 @@ auto LValue::print(std::uint64_t indent = 0) const -> void {
 }
 
 auto ConstExpr::print(std::uint64_t indent = 0) const -> void {
-    std::println("{}ConstExpr {}", std::string(indent, ' '), value);
+    std::println("{}ConstExpr {} {}", std::string(indent, ' '), val_type_to_string(type), value);
 }
 
 auto BinExpr::print(std::uint64_t indent = 0) const -> void {

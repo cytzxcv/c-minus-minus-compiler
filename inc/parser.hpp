@@ -21,18 +21,23 @@ private:
 
     // decl
     auto type_decl() -> Decl::Ptr;
+    auto var_func_decl() -> Decl::Ptr;
+    auto var_decl(ValType, std::string_view) -> Decl::Ptr;
+    auto func_decl(ValType, std::string_view) -> Decl::Ptr;
 
-    auto get_type(std::string_view) -> std::optional<ValType>;
+    auto get_type(Token) -> std::optional<ValType>;
 
     // stmt
-    auto block_stmt() -> Stmt::Ptr;
+    auto stmt() -> Stmt::Ptr;
+
+    auto block_stmt() -> BlockStmt::Ptr;
     auto expr_stmt() -> Stmt::Ptr;
     auto if_stmt() -> Stmt::Ptr;
     auto while_stmt() -> Stmt::Ptr;
 
     // expr
     auto expr() -> Expr::Ptr;
-    auto assignable() -> Expr::Ptr;
+    auto assignable() -> LValue::Ptr;
 
     auto expr_bp(std::uint64_t) -> Expr::Ptr;
 
@@ -46,7 +51,7 @@ public:
     bool has_error;
     std::string error;
 
-    Parser(Lexer &);
+    auto decl() -> Decl::Ptr;
 
-    auto stmt() -> Stmt::Ptr;
+    Parser(Lexer &);
 };
