@@ -178,13 +178,13 @@ auto VarDecl::print(std::uint64_t indent = 0) const -> void {
     std::println("{}VarDecl {} (", std::string(indent, ' '), val_type_to_string(type));
 
     for (const Var &var : vars) {
-        var.first->print(indent + 2);
+        var.first->print(indent + 4);
 
         if (!var.second) {
-            std::println("{}*empty*", std::string(indent + 2, ' '));
+            std::println("{}*no init*", std::string(indent + 4, ' '));
         }
         else {
-            var.second->print(indent + 2);
+            var.second->print(indent + 4);
         }
     }
 
@@ -195,16 +195,16 @@ auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
     std::println("{}FuncDecl {} {} (", std::string(indent, ' '), val_type_to_string(type), name);
 
     if (params.empty()) {
-        std::println("{}*empty*", std::string(indent + 2, ' '));
+        std::println("{}*no params*", std::string(indent + 4, ' '));
     }
     else {
         for (const Param &param : params) {
-            std::println("{}{}", std::string(indent + 2, ' '), val_type_to_string(param.first));
-            param.second->print(indent + 2);
+            std::println("{}{}", std::string(indent + 4, ' '), val_type_to_string(param.first));
+            param.second->print(indent + 4);
         }
     }
 
-    body->print(indent + 2);
+    body->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -212,7 +212,7 @@ auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
 auto ExprStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}ExprStmt (", std::string(indent, ' '));
 
-    expr->print(indent + 2);
+    expr->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -221,12 +221,12 @@ auto BlockStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}BlockStmt (", std::string(indent, ' '));
 
     if (items.empty()) {
-        std::println("{}*empty*\n{})", std::string(indent + 2, ' '), std::string(indent, ' '));
+        std::println("{}*no decls/stmts*\n{})", std::string(indent + 4, ' '), std::string(indent, ' '));
         return;
     }
 
     for (const BlockStmt::Item &item : items) {
-        std::visit([indent](const auto &ptr) { ptr->print(indent + 2); }, item);
+        std::visit([indent](const auto &ptr) { ptr->print(indent + 4); }, item);
     }
 
     std::println("{})", std::string(indent, ' '));
@@ -235,15 +235,15 @@ auto BlockStmt::print(std::uint64_t indent = 0) const -> void {
 auto IfStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}IfStmt (", std::string(indent, ' '));
 
-    cond->print(indent + 2);
-    if_branch->print(indent + 2);
+    cond->print(indent + 4);
+    if_branch->print(indent + 4);
 
     if (!else_branch) {
         std::println("{})", std::string(indent, ' '));
         return;
     }
 
-    else_branch->print(indent + 2);
+    else_branch->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -252,30 +252,30 @@ auto ForStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}ForStmt (", std::string(indent, ' '));
 
     if (init.index() == 0) {
-        std::println("{}*empty*", std::string(indent + 2, ' '));
+        std::println("{}*no init*", std::string(indent + 4, ' '));
     }
     else if (init.index() == 1) {
-        std::get<VarDecl::Ptr>(init)->print(indent + 2);
+        std::get<VarDecl::Ptr>(init)->print(indent + 4);
     }
     else {
-        std::get<Expr::Ptr>(init)->print(indent + 2);
+        std::get<Expr::Ptr>(init)->print(indent + 4);
     }
 
     if (!cond) {
-        std::println("{}*empty*", std::string(indent + 2, ' '));
+        std::println("{}*no cond*", std::string(indent + 4, ' '));
     }
     else {
-        cond->print(indent + 2);
+        cond->print(indent + 4);
     }
 
     if (!iter) {
-        std::println("{}*empty*", std::string(indent + 2, ' '));
+        std::println("{}*no iter*", std::string(indent + 4, ' '));
     }
     else {
-        iter->print(indent + 2);
+        iter->print(indent + 4);
     }
 
-    stmt->print(indent + 2);
+    stmt->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -283,8 +283,8 @@ auto ForStmt::print(std::uint64_t indent = 0) const -> void {
 auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}WhileStmt (", std::string(indent, ' '));
 
-    cond->print(indent + 2);
-    stmt->print(indent + 2);
+    cond->print(indent + 4);
+    stmt->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -292,7 +292,12 @@ auto WhileStmt::print(std::uint64_t indent = 0) const -> void {
 auto ReturnStmt::print(std::uint64_t indent = 0) const -> void {
     std::println("{}ReturnStmt (", std::string(indent, ' '));
 
-    expr->print(indent + 2);
+    if (!expr) {
+        std::println("{}*no expr*", std::string(indent + 4, ' '));
+    }
+    else {
+        expr->print(indent + 4);
+    }
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -309,10 +314,10 @@ auto LValue::print(std::uint64_t indent = 0) const -> void {
 
     for (const auto &dim : dims) {
         if (dim == nullptr) {
-            std::println("{}*empty*", std::string(indent + 2, ' '));
+            std::println("{}*empty dim*", std::string(indent + 4, ' '));
             continue;
         }
-        dim->print(indent + 2);
+        dim->print(indent + 4);
     }
 
     std::println("{})", std::string(indent, ' '));
@@ -325,8 +330,8 @@ auto ConstExpr::print(std::uint64_t indent = 0) const -> void {
 auto BinExpr::print(std::uint64_t indent = 0) const -> void {
     std::println("{}BinExpr {} (", std::string(indent, ' '), op_type_to_string(op));
 
-    lhs->print(indent + 2);
-    rhs->print(indent + 2);
+    lhs->print(indent + 4);
+    rhs->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
@@ -334,23 +339,21 @@ auto BinExpr::print(std::uint64_t indent = 0) const -> void {
 auto UnaryExpr::print(std::uint64_t indent = 0) const -> void {
     std::println("{}UnaryExpr {} (", std::string(indent, ' '), op_type_to_string(op));
 
-    rhs->print(indent + 2);
+    rhs->print(indent + 4);
 
     std::println("{})", std::string(indent, ' '));
 }
 
 auto FuncExpr::print(std::uint64_t indent = 0) const -> void {
-    std::print("{}FuncExpr {}", std::string(indent, ' '), name);
+    std::println("{}FuncExpr {} (", std::string(indent, ' '), name);
 
     if (args.empty()) {
-        std::println(" *empty*");
-        return;
+        std::println("{}*no args*", std::string(indent + 4, ' '));
     }
-
-    std::println(" (");
-
-    for (const auto &arg : args) {
-        arg->print(indent + 2);
+    else {
+        for (const auto &arg : args) {
+            arg->print(indent + 4);
+        }
     }
 
     std::println("{})", std::string(indent, ' '));

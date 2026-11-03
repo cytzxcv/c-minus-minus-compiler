@@ -7,8 +7,8 @@
 #include <utility>
 #include <variant>
 
-Parser::Parser(Lexer &lexer_) : lexer(lexer_), type_table(), has_error(false), error("") {
-    type_table.emplace_back();
+Parser::Parser(Lexer &lexer_) : lexer(lexer_), symbol_table(), has_error(false), error("") {
+    symbol_table.emplace_back();
 }
 
 auto Parser::parse() -> Prog::Ptr {
@@ -37,11 +37,6 @@ auto Parser::make_error(std::string err, Token &tok) -> void {
 auto Parser::block_item() -> BlockStmt::Item {
     Token look_ahead = lexer.next_token(true);
 
-    while (look_ahead.type == TokenType::Semicolon) {
-        lexer.next_token(); // consume ";"
-        look_ahead = lexer.next_token(true);
-    }
-
     if (look_ahead.type == TokenType::Typedef || get_type(look_ahead).has_value()) {
         return decl();
     }
@@ -52,11 +47,6 @@ auto Parser::block_item() -> BlockStmt::Item {
 // decl
 auto Parser::decl() -> Decl::Ptr {
     TokenType look_ahead = lexer.next_token(true).type;
-
-    while (look_ahead == TokenType::Semicolon) {
-        lexer.next_token(); // consume ";"
-        look_ahead = lexer.next_token(true).type;
-    }
 
     switch (look_ahead) {
     case TokenType::Typedef:
@@ -89,10 +79,6 @@ auto Parser::type_decl() -> Decl::Ptr {
         make_error("Expect identifier", name_token);
         return nullptr;
     }
-    else if (type_table.back().contains(name_token.lexeme)) {
-        make_error("Expect undefined symbol", name_token);
-        return nullptr;
-    }
 
     Token semicolon = lexer.next_token();
     if (semicolon.type != TokenType::Semicolon) {
@@ -100,7 +86,7 @@ auto Parser::type_decl() -> Decl::Ptr {
         return nullptr;
     }
 
-    type_table.back()[name_token.lexeme] = type;
+    symbol_table.back()[name_token.lexeme] = type;
     return make_unique<TypeDecl>(type, name_token.lexeme);
 }
 
@@ -141,6 +127,8 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
     std::unique_ptr<VarDecl> return_decl = std::make_unique<VarDecl>(type);
     bool var_added = false;
 
+    symbol_table.back()[first_lvalue->name] = std::nullopt;
+
     Token delim = lexer.next_token();
     if (delim.type == TokenType::Assign) {
         Expr::Ptr init_expr = expr();
@@ -175,8 +163,9 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
             return nullptr;
         }
 
-        look_ahead = lexer.next_token();
+        symbol_table.back()[lvalue->name] = std::nullopt;
 
+        look_ahead = lexer.next_token();
         if (look_ahead.type == TokenType::Assign) {
             Expr::Ptr init_expr = expr();
             if (!init_expr) {
@@ -205,7 +194,7 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
 auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
     Token lparen = lexer.next_token();
 
-    if (type_table.size() > 1) {
+    if (symbol_table.size() > 1) {
         make_error("Function definition is only allowed for global scope", lparen);
         return nullptr;
     }
@@ -286,10 +275,10 @@ auto Parser::get_type(Token token) -> std::optional<ValType> {
         return std::nullopt;
     }
 
-    for (std::size_t i = type_table.size(); i > 0; i--) {
-        auto iter = type_table[i - 1].find(token.lexeme);
+    for (std::size_t i = symbol_table.size(); i > 0; i--) {
+        auto iter = symbol_table[i - 1].find(token.lexeme);
 
-        if (iter != type_table[i - 1].end()) {
+        if (iter != symbol_table[i - 1].end()) {
             return iter->second;
         }
     }
@@ -300,11 +289,6 @@ auto Parser::get_type(Token token) -> std::optional<ValType> {
 // stmt
 auto Parser::stmt() -> Stmt::Ptr {
     TokenType look_ahead = lexer.next_token(true).type;
-
-    while (look_ahead == TokenType::Semicolon) {
-        lexer.next_token(); // consume ";"
-        look_ahead = lexer.next_token(true).type;
-    }
 
     switch (look_ahead) {
     case TokenType::LeftBrace:
@@ -333,10 +317,19 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
 
     BlockStmt::Ptr block = std::make_unique<BlockStmt>();
 
-    type_table.emplace_back();
+    symbol_table.emplace_back();
     TokenType look_ahead = lexer.next_token(true).type;
 
     while (look_ahead != TokenType::RightBrace) {
+        while (look_ahead == TokenType::Semicolon) {
+            lexer.next_token();
+            look_ahead = lexer.next_token(true).type;
+        }
+
+        if (look_ahead == TokenType::RightBrace) {
+            break;
+        }
+
         BlockStmt::Item item = block_item();
         if (std::visit([](const auto &ptr) { return !ptr; }, item)) {
             return nullptr;
@@ -349,7 +342,7 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
 
     lexer.next_token(); // consume "}"
 
-    type_table.pop_back();
+    symbol_table.pop_back();
     return block;
 }
 
@@ -528,6 +521,12 @@ auto Parser::while_stmt() -> Stmt::Ptr {
 auto Parser::return_stmt() -> Stmt::Ptr {
     lexer.next_token(); // consume "return"
 
+    if (lexer.next_token(true).type == TokenType::Semicolon) {
+        lexer.next_token(); // consume ";"
+
+        return std::make_unique<ReturnStmt>(nullptr);
+    }
+
     Expr::Ptr return_expr = expr();
     if (!return_expr) {
         return nullptr;
@@ -635,7 +634,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
             break;
         }
 
-        (void)lexer.next_token();
+        lexer.next_token();
 
         if (try_index(op, return_expr)) {
             continue;
@@ -676,7 +675,7 @@ auto Parser::try_index(Token &op, Expr::Ptr &lhs) -> bool {
     }
 
     if (lexer.next_token(true).type == TokenType::RightBracket) {
-        (void)lexer.next_token();
+        lexer.next_token();
         lvalue->dims.emplace_back(nullptr);
         return true;
     }
@@ -711,7 +710,7 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
     lhs = std::make_unique<FuncExpr>(lvalue->name);
 
     if (lexer.next_token(true).type == TokenType::RightParenthesis) {
-        (void)lexer.next_token();
+        lexer.next_token();
         return true;
     }
 

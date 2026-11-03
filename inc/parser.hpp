@@ -14,7 +14,9 @@
 class Parser {
 private:
     Lexer &lexer;
-    std::vector<std::unordered_map<std::string_view, ValType>> type_table;
+
+    // std::nullopt = variable in the scope, Valtype = typedef in the scope
+    std::vector<std::unordered_map<std::string_view, std::optional<ValType>>> symbol_table;
 
     auto make_error(std::string, Token &) -> void;
     auto block_item() -> BlockStmt::Item;
