@@ -35,6 +35,29 @@ enum class OpType {
     Cma, // ,
 };
 
+enum class DeclType {
+    Var,
+    Type,
+    Func,
+};
+
+enum class StmtType {
+    Block,
+    Expr,
+    If,
+    For,
+    While,
+    Return,
+};
+
+enum class ExprType {
+    LValue,
+    Const,
+    Bin,
+    Unary,
+    Func,
+};
+
 auto op_type_convert(TokenType) -> OpType;
 
 constexpr auto val_type_to_string(ValType) -> std::string_view;
@@ -44,24 +67,36 @@ class Decl {
 public:
     using Ptr = std::unique_ptr<Decl>;
 
+    DeclType decl_type;
+
     virtual ~Decl() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
+
+    Decl(DeclType);
 };
 
 class Stmt {
 public:
     using Ptr = std::unique_ptr<Stmt>;
 
+    StmtType stmt_type;
+
     virtual ~Stmt() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
+
+    Stmt(StmtType);
 };
 
 class Expr {
 public:
     using Ptr = std::unique_ptr<Expr>;
 
+    ExprType expr_type;
+
     virtual ~Expr() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
+
+    Expr(ExprType);
 };
 
 class Prog {

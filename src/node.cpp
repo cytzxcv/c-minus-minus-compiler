@@ -140,39 +140,44 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
 
 Prog::Prog() : decls{} { }
 
-LValue::LValue(std::string_view name_) : name(name_), dims{} { }
+TypeDecl::TypeDecl(ValType type_, std::string_view name_) : Decl(DeclType::Type), type(type_), name(name_) { }
 
-TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(name_) { }
-
-VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
+VarDecl::VarDecl(ValType type_) : Decl(DeclType::Var), type(type_), vars{} { }
 
 VarDecl::Var::Var(LValue::Ptr lvalue_, Expr::Ptr expr_) : lvalue(std::move(lvalue_)), expr(std::move(expr_)) { }
 
-FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body(nullptr) { }
+FuncDecl::FuncDecl(ValType type_, std::string_view name_)
+    : Decl(DeclType::Func), type(type_), name(name_), params{}, body(nullptr) { }
 
 FuncDecl::Param::Param(ValType type_, LValue::Ptr lvalue_) : type(type_), lvalue(std::move(lvalue_)) { }
 
-ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
+ExprStmt::ExprStmt(Expr::Ptr expr_) : Stmt(StmtType::Expr), expr(std::move(expr_)) { }
 
-BlockStmt::BlockStmt() : items{} { }
+BlockStmt::BlockStmt() : Stmt(StmtType::Block), items{} { }
 
 IfStmt::IfStmt(Expr::Ptr cond_, Stmt::Ptr if_branch_, Stmt::Ptr else_branch_)
-    : cond(std::move(cond_)), if_branch(std::move(if_branch_)), else_branch(std::move(else_branch_)) { }
+    : Stmt(StmtType::If), cond(std::move(cond_)), if_branch(std::move(if_branch_)),
+      else_branch(std::move(else_branch_)) { }
 
 ForStmt::ForStmt(ForStmt::Init init_, Expr::Ptr cond_, Expr::Ptr iter_, Stmt::Ptr stmt_)
-    : init(std::move(init_)), cond(std::move(cond_)), iter(std::move(iter_)), stmt(std::move(stmt_)) { }
+    : Stmt(StmtType::For), init(std::move(init_)), cond(std::move(cond_)), iter(std::move(iter_)),
+      stmt(std::move(stmt_)) { }
 
-WhileStmt::WhileStmt(Expr::Ptr cond_, Stmt::Ptr stmt_) : cond(std::move(cond_)), stmt(std::move(stmt_)) { }
+WhileStmt::WhileStmt(Expr::Ptr cond_, Stmt::Ptr stmt_)
+    : Stmt(StmtType::While), cond(std::move(cond_)), stmt(std::move(stmt_)) { }
 
-ReturnStmt::ReturnStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
+ReturnStmt::ReturnStmt(Expr::Ptr expr_) : Stmt(StmtType::Return), expr(std::move(expr_)) { }
 
-ConstExpr::ConstExpr(ValType type_, std::string_view value_) : type(type_), value(value_) { }
+LValue::LValue(std::string_view name_) : Expr(ExprType::LValue), name(name_), dims{} { }
 
-BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_) : op(op_), lhs(std::move(lhs_)), rhs(std::move(rhs_)) { }
+ConstExpr::ConstExpr(ValType type_, std::string_view value_) : Expr(ExprType::Const), type(type_), value(value_) { }
 
-UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : op(op_), rhs(std::move(rhs_)) { }
+BinExpr::BinExpr(OpType op_, Expr::Ptr lhs_, Expr::Ptr rhs_)
+    : Expr(ExprType::Bin), op(op_), lhs(std::move(lhs_)), rhs(std::move(rhs_)) { }
 
-FuncExpr::FuncExpr(std::string_view name_) : name(name_), args{} { }
+UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_) : Expr(ExprType::Unary), op(op_), rhs(std::move(rhs_)) { }
+
+FuncExpr::FuncExpr(std::string_view name_) : Expr(ExprType::Func), name(name_), args{} { }
 
 auto Prog::print() const -> void {
     for (const Decl::Ptr &decl : decls) {
