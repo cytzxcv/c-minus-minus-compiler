@@ -144,6 +144,8 @@ VarDecl::Var::Var(LValue::Ptr lvalue_, Expr::Ptr expr_) : lvalue(std::move(lvalu
 
 FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body(nullptr) { }
 
+FuncDecl::Param::Param(ValType type_, LValue::Ptr lvalue_) : type(type_), lvalue(std::move(lvalue_)) { }
+
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
 
 BlockStmt::BlockStmt() : items{} { }
@@ -201,8 +203,8 @@ auto FuncDecl::print(std::uint64_t indent = 0) const -> void {
     }
     else {
         for (const Param &param : params) {
-            std::println("{}{}", std::string(indent + 4, ' '), val_type_to_string(param.first));
-            param.second->print(indent + 4);
+            std::println("{}{}", std::string(indent + 4, ' '), val_type_to_string(param.type));
+            param.lvalue->print(indent + 4);
         }
     }
 

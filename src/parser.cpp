@@ -136,7 +136,6 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
             return nullptr;
         }
 
-        // return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), std::move(init_expr)));
         return_decl->vars.emplace_back(VarDecl::Var(std::move(first_lvalue), std::move(init_expr)));
         var_added = true;
 
@@ -144,7 +143,6 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
     }
 
     if (!var_added) {
-        // return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), nullptr));
         return_decl->vars.emplace_back(VarDecl::Var(std::move(first_lvalue), nullptr));
     }
 
@@ -174,7 +172,6 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
                 return nullptr;
             }
 
-            // return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), std::move(init_expr)));
             return_decl->vars.emplace_back(VarDecl::Var(std::move(lvalue), std::move(init_expr)));
             var_added = true;
 
@@ -182,7 +179,6 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
         }
 
         if (!var_added) {
-            // return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), nullptr));
             return_decl->vars.emplace_back(VarDecl::Var(std::move(lvalue), nullptr));
         }
 
@@ -235,7 +231,7 @@ auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
             return nullptr;
         }
 
-        return_decl->params.emplace_back(std::make_pair(param_type.value(), std::move(lvalue)));
+        return_decl->params.emplace_back(FuncDecl::Param(param_type.value(), std::move(lvalue)));
     }
 
     if (return_decl->params.empty()) {
@@ -626,7 +622,6 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
             return nullptr;
         }
 
-        // std::optional<std::pair<std::uint64_t, std::uint64_t>>
         auto bp_result = infix_bp(op_type_convert(op.type));
         if (!bp_result.has_value()) {
             make_error("Expect infix operator", op);

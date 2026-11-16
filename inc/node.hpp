@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 #include <string_view>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -102,7 +101,7 @@ public:
 class VarDecl : public Decl {
 public:
     using Ptr = std::unique_ptr<VarDecl>;
-    // using Var = std::pair<LValue::Ptr, Expr::Ptr>;
+
     class Var {
     public:
         LValue::Ptr lvalue;
@@ -131,7 +130,13 @@ public:
 
 class FuncDecl : public Decl {
 public:
-    using Param = std::pair<ValType, LValue::Ptr>;
+    class Param {
+    public:
+        ValType type;
+        LValue::Ptr lvalue;
+
+        Param(ValType, LValue::Ptr);
+    };
 
     ValType type;
     std::string_view name;
