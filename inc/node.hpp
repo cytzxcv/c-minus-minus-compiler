@@ -102,7 +102,14 @@ public:
 class VarDecl : public Decl {
 public:
     using Ptr = std::unique_ptr<VarDecl>;
-    using Var = std::pair<LValue::Ptr, Expr::Ptr>;
+    // using Var = std::pair<LValue::Ptr, Expr::Ptr>;
+    class Var {
+    public:
+        LValue::Ptr lvalue;
+        Expr::Ptr expr;
+
+        Var(LValue::Ptr lvalue_, Expr::Ptr expr_);
+    };
 
     ValType type;
     std::vector<Var> vars;

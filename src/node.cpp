@@ -140,6 +140,8 @@ TypeDecl::TypeDecl(ValType type_, std::string_view name_) : type(type_), name(na
 
 VarDecl::VarDecl(ValType type_) : type(type_), vars{} { }
 
+VarDecl::Var::Var(LValue::Ptr lvalue_, Expr::Ptr expr_) : lvalue(std::move(lvalue_)), expr(std::move(expr_)) { }
+
 FuncDecl::FuncDecl(ValType type_, std::string_view name_) : type(type_), name(name_), params{}, body(nullptr) { }
 
 ExprStmt::ExprStmt(Expr::Ptr expr_) : expr(std::move(expr_)) { }
@@ -178,13 +180,13 @@ auto VarDecl::print(std::uint64_t indent = 0) const -> void {
     std::println("{}VarDecl {} (", std::string(indent, ' '), val_type_to_string(type));
 
     for (const Var &var : vars) {
-        var.first->print(indent + 4);
+        var.lvalue->print(indent + 4);
 
-        if (!var.second) {
+        if (!var.expr) {
             std::println("{}*no init*", std::string(indent + 4, ' '));
         }
         else {
-            var.second->print(indent + 4);
+            var.expr->print(indent + 4);
         }
     }
 

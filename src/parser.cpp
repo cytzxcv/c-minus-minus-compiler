@@ -136,14 +136,16 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
             return nullptr;
         }
 
-        return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), std::move(init_expr)));
+        // return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), std::move(init_expr)));
+        return_decl->vars.emplace_back(VarDecl::Var(std::move(first_lvalue), std::move(init_expr)));
         var_added = true;
 
         delim = lexer.next_token();
     }
 
     if (!var_added) {
-        return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), nullptr));
+        // return_decl->vars.emplace_back(std::make_pair(std::move(first_lvalue), nullptr));
+        return_decl->vars.emplace_back(VarDecl::Var(std::move(first_lvalue), nullptr));
     }
 
     if (delim.type == TokenType::Semicolon) {
@@ -172,14 +174,16 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
                 return nullptr;
             }
 
-            return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), std::move(init_expr)));
+            // return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), std::move(init_expr)));
+            return_decl->vars.emplace_back(VarDecl::Var(std::move(lvalue), std::move(init_expr)));
             var_added = true;
 
             look_ahead = lexer.next_token();
         }
 
         if (!var_added) {
-            return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), nullptr));
+            // return_decl->vars.emplace_back(std::make_pair(std::move(lvalue), nullptr));
+            return_decl->vars.emplace_back(VarDecl::Var(std::move(lvalue), nullptr));
         }
 
         if (look_ahead.type != TokenType::Comma && look_ahead.type != TokenType::Semicolon) {
@@ -740,37 +744,37 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
 constexpr auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
     switch (op) {
     case OpType::Mov:
-        return std::pair{11, 10};
+        return std::make_pair(11, 10);
         break;
     case OpType::Or:
-        return std::pair{20, 21};
+        return std::make_pair(20, 21);
         break;
     case OpType::And:
-        return std::pair{30, 31};
+        return std::make_pair(30, 31);
         break;
     case OpType::Eq:
     case OpType::Neq:
-        return std::pair{40, 41};
+        return std::make_pair(40, 41);
         break;
     case OpType::Lt:
     case OpType::Gt:
     case OpType::Leq:
     case OpType::Geq:
-        return std::pair{50, 51};
+        return std::make_pair(50, 51);
         break;
     case OpType::Add:
     case OpType::Sub:
-        return std::pair{60, 61};
+        return std::make_pair(60, 61);
         break;
     case OpType::Mul:
     case OpType::Div:
-        return std::pair{70, 71};
+        return std::make_pair(70, 71);
         break;
     case OpType::Prn:
-        return std::pair{90, 91};
+        return std::make_pair(90, 91);
         break;
     case OpType::Brk:
-        return std::pair{100, 101};
+        return std::make_pair(100, 101);
         break;
     default:
     }
