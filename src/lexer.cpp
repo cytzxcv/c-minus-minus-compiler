@@ -424,6 +424,6 @@ auto Lexer::oper() -> std::pair<Token, std::uint64_t> {
     }
 
     Token return_token = make_token(return_type, offset);
-    // advance();
+
     return {return_token, offset};
 }

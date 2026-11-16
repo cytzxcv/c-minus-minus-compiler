@@ -131,7 +131,7 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
 
     Token delim = lexer.next_token();
     if (delim.type == TokenType::Assign) {
-        Expr::Ptr init_expr = expr();
+        Expr::Ptr init_expr = expr(true);
         if (!init_expr) {
             return nullptr;
         }
@@ -167,7 +167,7 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
 
         look_ahead = lexer.next_token();
         if (look_ahead.type == TokenType::Assign) {
-            Expr::Ptr init_expr = expr();
+            Expr::Ptr init_expr = expr(true);
             if (!init_expr) {
                 return nullptr;
             }
@@ -542,12 +542,12 @@ auto Parser::return_stmt() -> Stmt::Ptr {
 }
 
 // expr
-auto Parser::expr() -> Expr::Ptr {
-    return expr_bp(0);
+auto Parser::expr(bool is_in_list) -> Expr::Ptr {
+    return expr_bp(0, is_in_list);
 }
 
 auto Parser::assignable() -> LValue::Ptr {
-    Expr::Ptr lvalue = expr_bp(100);
+    Expr::Ptr lvalue = expr_bp(110);
 
     if (!lvalue) {
         return nullptr;
@@ -556,7 +556,7 @@ auto Parser::assignable() -> LValue::Ptr {
     return LValue::Ptr(static_cast<LValue *>(lvalue.release()));
 }
 
-auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
+auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
     Expr::Ptr return_expr;
     Token tok = lexer.next_token();
 
@@ -582,7 +582,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
             return nullptr;
         }
 
-        std::optional<Expr::Ptr> rhs = expr_bp(result.value());
+        std::optional<Expr::Ptr> rhs = expr_bp(result.value(), is_in_list);
         if (!rhs.has_value()) {
             return nullptr;
         }
@@ -614,7 +614,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
 
     while (true) {
         Token op = lexer.next_token(true);
-        if (op.is_delim()) {
+        if (op.is_delim() || (is_in_list && op.type == TokenType::Comma)) {
             break;
         }
         else if (!op.is_oper()) {
@@ -649,7 +649,7 @@ auto Parser::expr_bp(std::uint64_t min_bp) -> Expr::Ptr {
             return nullptr;
         }
 
-        std::optional<Expr::Ptr> rhs = expr_bp(r_bp);
+        std::optional<Expr::Ptr> rhs = expr_bp(r_bp, is_in_list);
         if (!rhs.has_value()) {
             return nullptr;
         }
@@ -714,7 +714,7 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
     }
 
     while (true) {
-        std::optional<Expr::Ptr> arg = expr();
+        std::optional<Expr::Ptr> arg = expr(true);
         if (!arg.has_value()) {
             return false;
         }
@@ -738,38 +738,41 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
 
 constexpr auto Parser::infix_bp(OpType op) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
     switch (op) {
+    case OpType::Cma:
+        return std::make_pair(10, 11);
+        break;
     case OpType::Mov:
-        return std::make_pair(11, 10);
+        return std::make_pair(21, 20);
         break;
     case OpType::Or:
-        return std::make_pair(20, 21);
+        return std::make_pair(30, 31);
         break;
     case OpType::And:
-        return std::make_pair(30, 31);
+        return std::make_pair(40, 41);
         break;
     case OpType::Eq:
     case OpType::Neq:
-        return std::make_pair(40, 41);
+        return std::make_pair(50, 51);
         break;
     case OpType::Lt:
     case OpType::Gt:
     case OpType::Leq:
     case OpType::Geq:
-        return std::make_pair(50, 51);
+        return std::make_pair(60, 61);
         break;
     case OpType::Add:
     case OpType::Sub:
-        return std::make_pair(60, 61);
+        return std::make_pair(70, 71);
         break;
     case OpType::Mul:
     case OpType::Div:
-        return std::make_pair(70, 71);
+        return std::make_pair(80, 81);
         break;
     case OpType::Prn:
-        return std::make_pair(90, 91);
+        return std::make_pair(100, 101);
         break;
     case OpType::Brk:
-        return std::make_pair(100, 101);
+        return std::make_pair(110, 111);
         break;
     default:
     }
@@ -782,7 +785,7 @@ constexpr auto Parser::prefix_bp(OpType op) -> std::optional<std::uint64_t> {
     case OpType::Add:
     case OpType::Sub:
     case OpType::Not:
-        return 80;
+        return 90;
     default:
     }
 

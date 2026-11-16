@@ -43,10 +43,10 @@ private:
     auto return_stmt() -> Stmt::Ptr;
 
     // expr
-    auto expr() -> Expr::Ptr;
+    auto expr(bool is_in_list = false) -> Expr::Ptr;
     auto assignable() -> LValue::Ptr;
 
-    auto expr_bp(std::uint64_t) -> Expr::Ptr;
+    auto expr_bp(std::uint64_t, bool is_in_list = false) -> Expr::Ptr;
 
     auto try_index(Token &, Expr::Ptr &) -> bool;
     auto try_func(Token &, Expr::Ptr &) -> bool;

@@ -32,6 +32,7 @@ enum class OpType {
     Mov, // =
     Brk, // [
     Prn, // (
+    Cma, // ,
 };
 
 auto op_type_convert(TokenType) -> OpType;

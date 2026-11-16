@@ -165,6 +165,7 @@ auto Token::is_oper() -> bool {
     case TokenType::Assign:
     case TokenType::LeftBracket:
     case TokenType::LeftParenthesis:
+    case TokenType::Comma:
         return true;
 
     default:
@@ -177,7 +178,6 @@ auto Token::is_delim() -> bool {
     case TokenType::Eof:
     case TokenType::RightBracket:
     case TokenType::RightParenthesis:
-    case TokenType::Comma:
     case TokenType::Semicolon:
         return true;
 

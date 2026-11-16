@@ -55,6 +55,9 @@ auto op_type_convert(TokenType tok_type) -> OpType {
     case TokenType::LeftParenthesis:
         return OpType::Prn;
         break;
+    case TokenType::Comma:
+        return OpType::Cma;
+        break;
     default:
     }
 
@@ -128,6 +131,9 @@ constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
         break;
     case OpType::Prn:
         return "()";
+        break;
+    case OpType::Cma:
+        return ",";
         break;
     }
 }
