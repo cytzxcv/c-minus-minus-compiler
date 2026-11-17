@@ -11,6 +11,7 @@ class Lexer {
 private:
     std::string source;
     std::uint64_t pos, line, column;
+    bool print_info;
 
     auto make_token(TokenType, std::uint64_t) -> Token;
     auto make_error() -> Token;
@@ -37,7 +38,7 @@ public:
     bool has_error;
     std::string error;
 
-    Lexer(std::string);
+    Lexer(std::string, bool);
 
     auto next_token(bool is_peeking = false) -> Token;
 };

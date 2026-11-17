@@ -32,7 +32,7 @@ void StaticAnalyzer::analyze(Prog::Ptr &prog) {
 
 void StaticAnalyzer::make_error(std::string error_str, std::uint64_t line) {
     has_error = true;
-    error += std::format("{} at line {}\n", error_str, line);
+    error += std::format("{} at [line {}]\n", error_str, line);
 }
 
 void StaticAnalyzer::type_decl(Decl::Ptr &decl) {

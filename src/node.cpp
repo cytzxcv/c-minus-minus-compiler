@@ -189,9 +189,13 @@ UnaryExpr::UnaryExpr(OpType op_, Expr::Ptr rhs_, std::uint64_t line_)
 FuncExpr::FuncExpr(std::string_view name_, std::uint64_t line_) : Expr(ExprType::Func, line_), name(name_), args{} { }
 
 auto Prog::print() const -> void {
+    std::println("Prog (");
+
     for (const Decl::Ptr &decl : decls) {
-        decl->print();
+        decl->print(4);
     }
+
+    std::println(")");
 }
 
 auto TypeDecl::print(std::uint64_t indent = 0) const -> void {

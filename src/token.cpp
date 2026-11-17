@@ -5,7 +5,7 @@
 #include <string_view>
 #include <utility>
 
-constexpr auto token_type_to_string(TokenType type) -> std::string_view {
+auto token_type_to_string(TokenType type) -> std::string_view {
     switch (type) {
     case TokenType::Return:
         return "Return";

@@ -3,10 +3,12 @@
 
 #include <cstdint>
 #include <format>
+#include <print>
 #include <string_view>
 #include <utility>
 
-Lexer::Lexer(std::string source_) : source(source_), pos(0), line(1), column(1), has_error(false), error("") { }
+Lexer::Lexer(std::string source_, bool print_info_)
+    : source(source_), pos(0), line(1), column(1), print_info(print_info_), has_error(false), error("") { }
 
 auto Lexer::next_token(bool is_peeking) -> Token {
     std::uint64_t source_len = source.length();
@@ -24,34 +26,54 @@ auto Lexer::next_token(bool is_peeking) -> Token {
         return make_token(TokenType::Eof, 0);
     }
 
+    Token token = Token(TokenType::Eof, "", 0, 0);
+
     char current = peek(0);
 
     if (current == '\"') {
-        auto [token, offset] = str();
+        auto [str_token, offset] = str();
+
         if (!is_peeking) {
             advance(offset);
         }
-        return token;
+
+        token = str_token;
     }
     else if ((current == '.' && pos + 1 < source_len && is_num(peek(1))) || is_num(current)) {
-        auto [token, offset] = num();
+        auto [num_token, offset] = num();
+
         if (!is_peeking) {
             advance(offset);
         }
-        return token;
+
+        token = num_token;
     }
     else if (is_alpha(current)) {
-        auto [token, offset] = iden();
+        auto [iden_token, offset] = iden();
+
         if (!is_peeking) {
             advance(offset);
         }
-        return token;
+
+        token = iden_token;
+    }
+    else {
+        auto [oper_token, offset] = oper();
+
+        if (!is_peeking) {
+            advance(offset);
+        }
+
+        token = oper_token;
     }
 
-    auto [token, offset] = oper();
-    if (!is_peeking) {
-        advance(offset);
+    if (print_info && !is_peeking) {
+        std::println("Lexed {}", token_type_to_string(token.type));
     }
+    else if (print_info) {
+        std::println("Lexed {} (peeking)", token_type_to_string(token.type));
+    }
+
     return token;
 }
 
@@ -65,7 +87,7 @@ auto Lexer::make_error() -> Token {
 
 auto Lexer::make_error(std::string error_message) -> Token {
     has_error = true;
-    error = std::format("{} at {}:{}\n", error_message, line, column);
+    error = std::format("{} at [line {}, column {}]\n", error_message, line, column);
     return Token(TokenType::Err, std::string_view(error), line, column);
 }
 

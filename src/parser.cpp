@@ -4,10 +4,12 @@
 
 #include <format>
 #include <optional>
+#include <print>
 #include <utility>
 #include <variant>
 
-Parser::Parser(Lexer &lexer_) : lexer(lexer_), symbol_table(), has_error(false), error("") {
+Parser::Parser(Lexer &lexer_, bool print_info_)
+    : symbol_table(), lexer(lexer_), print_info(print_info_), has_error(false), error("") {
     symbol_table.emplace_back();
 }
 
@@ -26,12 +28,16 @@ auto Parser::parse() -> Prog::Ptr {
         look_ahead = lexer.next_token(true).type;
     }
 
+    if (print_info) {
+        std::println("Parsed Prog");
+    }
+
     return return_prog;
 }
 
 auto Parser::make_error(std::string err, Token &tok) -> void {
     has_error = true;
-    error = std::format("{} at {}:{}\n", err, tok.line, tok.column);
+    error = std::format("{} at [line {}, column {}]\n", err, tok.line, tok.column);
 }
 
 auto Parser::block_item() -> BlockStmt::Item {
@@ -87,6 +93,11 @@ auto Parser::type_decl() -> Decl::Ptr {
     }
 
     symbol_table.back()[name_token.lexeme] = type;
+
+    if (print_info) {
+        std::println("Parsed TypeDecl");
+    }
+
     return make_unique<TypeDecl>(type, name_token.lexeme, line);
 }
 
@@ -150,6 +161,10 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue, std::uint64_t line
     }
 
     if (delim.type == TokenType::Semicolon) {
+        if (print_info) {
+            std::println("Parsed VarDecl");
+        }
+
         return return_decl;
     }
     else if (delim.type != TokenType::Comma) {
@@ -189,6 +204,10 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue, std::uint64_t line
             make_error("Expect assignment or comma or semicolon", delim);
             return nullptr;
         }
+    }
+
+    if (print_info) {
+        std::println("Parsed VarDecl");
     }
 
     return return_decl;
@@ -235,6 +254,10 @@ auto Parser::func_decl(ValType type, std::string_view name, std::uint64_t line) 
         }
 
         return_decl->params.emplace_back(FuncDecl::Param(param_type.value(), std::move(lvalue)));
+
+        if (print_info) {
+            std::println("Parsed Param");
+        }
     }
 
     if (return_decl->params.empty()) {
@@ -257,6 +280,10 @@ auto Parser::func_decl(ValType type, std::string_view name, std::uint64_t line) 
     }
 
     return_decl->body = std::move(body);
+
+    if (print_info) {
+        std::println("Parsed FuncDecl");
+    }
 
     return return_decl;
 }
@@ -346,6 +373,11 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
     lexer.next_token(); // consume "}"
 
     symbol_table.pop_back();
+
+    if (print_info) {
+        std::println("Parsed BlockStmt");
+    }
+
     return block;
 }
 
@@ -361,6 +393,10 @@ auto Parser::expr_stmt() -> Stmt::Ptr {
     if (semicolon.type != TokenType::Semicolon) {
         make_error("Expect semicolon", semicolon);
         return nullptr;
+    }
+
+    if (print_info) {
+        std::println("Parsed ExprStmt");
     }
 
     return std::make_unique<ExprStmt>(std::move(return_expr), line);
@@ -392,6 +428,10 @@ auto Parser::if_stmt() -> Stmt::Ptr {
     }
 
     if (lexer.next_token(true).type != TokenType::Else) {
+        if (print_info) {
+            std::println("Parsed IfStmt");
+        }
+
         return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), nullptr, line);
     }
 
@@ -400,6 +440,10 @@ auto Parser::if_stmt() -> Stmt::Ptr {
     Stmt::Ptr else_body = stmt();
     if (!else_body) {
         return nullptr;
+    }
+
+    if (print_info) {
+        std::println("Parsed IfStmt");
     }
 
     return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body), line);
@@ -492,6 +536,10 @@ auto Parser::for_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
+    if (print_info) {
+        std::println("Parsed ForStmt");
+    }
+
     return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(iter), std::move(body), line);
 }
 
@@ -520,6 +568,10 @@ auto Parser::while_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
+    if (print_info) {
+        std::println("Parsed WhileStmt");
+    }
+
     return std::make_unique<WhileStmt>(std::move(cond), std::move(body), line);
 }
 
@@ -528,6 +580,10 @@ auto Parser::return_stmt() -> Stmt::Ptr {
 
     if (lexer.next_token(true).type == TokenType::Semicolon) {
         lexer.next_token(); // consume ";"
+
+        if (print_info) {
+            std::println("Parsed ReturnStmt");
+        }
 
         return std::make_unique<ReturnStmt>(nullptr, line);
     }
@@ -541,6 +597,10 @@ auto Parser::return_stmt() -> Stmt::Ptr {
     if (semicolon.type != TokenType::Semicolon) {
         make_error("Expect semicolon", semicolon);
         return nullptr;
+    }
+
+    if (print_info) {
+        std::println("Parsed ReturnStmt");
     }
 
     return std::make_unique<ReturnStmt>(std::move(return_expr), line);
@@ -594,6 +654,10 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
             return nullptr;
         }
 
+        if (print_info) {
+            std::println("Parsed UnaryExpr");
+        }
+
         return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()), line);
     }
     else if (tok.is_value()) {
@@ -601,15 +665,31 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
 
         switch (tok.type) {
         case TokenType::String:
+            if (print_info) {
+                std::println("Parsed ConstExpr");
+            }
+
             return_expr = std::make_unique<ConstExpr>(ValType::Str, tok.lexeme, line);
             break;
         case TokenType::Integer:
+            if (print_info) {
+                std::println("Parsed ConstExpr");
+            }
+
             return_expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme, line);
             break;
         case TokenType::Floating:
+            if (print_info) {
+                std::println("Parsed ConstExpr");
+            }
+
             return_expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme, line);
             break;
         case TokenType::Identifier:
+            if (print_info) {
+                std::println("Parsed LValue");
+            }
+
             return_expr = std::make_unique<LValue>(tok.lexeme, line);
             break;
         default:
@@ -665,6 +745,10 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
             return nullptr;
         }
 
+        if (print_info) {
+            std::println("Parsed BinExpr");
+        }
+
         return_expr =
             std::make_unique<BinExpr>(op_type_convert(op.type), std::move(return_expr), std::move(rhs.value()), line);
     }
@@ -687,6 +771,11 @@ auto Parser::try_index(Token &op, Expr::Ptr &lhs) -> bool {
     if (lexer.next_token(true).type == TokenType::RightBracket) {
         lexer.next_token();
         lvalue->dims.emplace_back(nullptr);
+
+        if (print_info) {
+            std::println("Parsed Dim/Index");
+        }
+
         return true;
     }
 
@@ -702,6 +791,11 @@ auto Parser::try_index(Token &op, Expr::Ptr &lhs) -> bool {
     }
 
     lvalue->dims.emplace_back(std::move(index.value()));
+
+    if (print_info) {
+        std::println("Parsed Dim/Index");
+    }
+
     return true;
 }
 
@@ -721,6 +815,11 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs, std::uint64_t line) -> bool {
 
     if (lexer.next_token(true).type == TokenType::RightParenthesis) {
         lexer.next_token();
+
+        if (print_info) {
+            std::println("Parsed FuncExpr");
+        }
+
         return true;
     }
 
@@ -733,15 +832,29 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs, std::uint64_t line) -> bool {
         Token delim = lexer.next_token();
         if (delim.type == TokenType::Comma) {
             static_cast<FuncExpr *>(lhs.get())->args.emplace_back(std::move(arg.value()));
+
+            if (print_info) {
+                std::println("Parsed Arg");
+            }
+
             continue;
         }
         else if (delim.type == TokenType::RightParenthesis) {
             static_cast<FuncExpr *>(lhs.get())->args.emplace_back(std::move(arg.value()));
+
+            if (print_info) {
+                std::println("Parsed Arg");
+            }
+
             break;
         }
 
         make_error("Expect comma or right parenthesis", delim);
         return false;
+    }
+
+    if (print_info) {
+        std::println("Parsed FuncExpr");
     }
 
     return true;

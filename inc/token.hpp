@@ -44,7 +44,7 @@ enum class TokenType {
     Err,
 };
 
-constexpr std::string_view token_type_to_string(TokenType type);
+std::string_view token_type_to_string(TokenType type);
 
 class Token {
 public:
