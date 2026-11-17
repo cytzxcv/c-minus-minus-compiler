@@ -27,8 +27,8 @@ private:
     auto type_decl() -> Decl::Ptr;
     auto var_func_decl() -> Decl::Ptr;
     auto var_decl_default() -> VarDecl::Ptr;
-    auto var_decl(ValType, LValue::Ptr) -> VarDecl::Ptr;
-    auto func_decl(ValType, std::string_view) -> Decl::Ptr;
+    auto var_decl(ValType, LValue::Ptr, std::uint64_t) -> VarDecl::Ptr;
+    auto func_decl(ValType, std::string_view, std::uint64_t) -> Decl::Ptr;
 
     auto get_type(Token) -> std::optional<ValType>;
 
@@ -49,7 +49,7 @@ private:
     auto expr_bp(std::uint64_t, bool is_in_list = false) -> Expr::Ptr;
 
     auto try_index(Token &, Expr::Ptr &) -> bool;
-    auto try_func(Token &, Expr::Ptr &) -> bool;
+    auto try_func(Token &, Expr::Ptr &, std::uint64_t) -> bool;
 
     constexpr auto infix_bp(OpType) -> std::optional<std::pair<std::uint64_t, std::uint64_t>>;
     constexpr auto prefix_bp(OpType) -> std::optional<std::uint64_t>;

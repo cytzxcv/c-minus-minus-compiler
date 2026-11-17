@@ -59,7 +59,7 @@ auto Parser::decl() -> Decl::Ptr {
 }
 
 auto Parser::type_decl() -> Decl::Ptr {
-    lexer.next_token(); // consume "typedef"
+    std::uint64_t line = lexer.next_token().line; // consume "typedef"
 
     ValType type;
     Token type_token = lexer.next_token();
@@ -87,12 +87,13 @@ auto Parser::type_decl() -> Decl::Ptr {
     }
 
     symbol_table.back()[name_token.lexeme] = type;
-    return make_unique<TypeDecl>(type, name_token.lexeme);
+    return make_unique<TypeDecl>(type, name_token.lexeme, line);
 }
 
 auto Parser::var_func_decl() -> Decl::Ptr {
     Token type_token = lexer.next_token();
     std::optional<ValType> check_type = get_type(type_token);
+    std::uint64_t line = type_token.line;
 
     if (!check_type) {
         make_error("Expect valid type", type_token);
@@ -106,25 +107,27 @@ auto Parser::var_func_decl() -> Decl::Ptr {
     }
 
     if (lvalue->dims.empty() && lexer.next_token(true).type == TokenType::LeftParenthesis) {
-        return func_decl(type, lvalue->name);
+        return func_decl(type, lvalue->name, line);
     }
 
-    return var_decl(type, std::move(lvalue));
+    return var_decl(type, std::move(lvalue), line);
 }
 
 auto Parser::var_decl_default() -> VarDecl::Ptr {
-    ValType type = get_type(lexer.next_token()).value();
+    Token type_token = lexer.next_token();
+    ValType type = get_type(type_token).value();
+    std::uint64_t line = type_token.line;
 
     LValue::Ptr lvalue = assignable();
     if (!lvalue) {
         return nullptr;
     }
 
-    return var_decl(type, std::move(lvalue));
+    return var_decl(type, std::move(lvalue), line);
 }
 
-auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
-    std::unique_ptr<VarDecl> return_decl = std::make_unique<VarDecl>(type);
+auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue, std::uint64_t line) -> VarDecl::Ptr {
+    std::unique_ptr<VarDecl> return_decl = std::make_unique<VarDecl>(type, line);
     bool var_added = false;
 
     symbol_table.back()[first_lvalue->name] = std::nullopt;
@@ -191,7 +194,7 @@ auto Parser::var_decl(ValType type, LValue::Ptr first_lvalue) -> VarDecl::Ptr {
     return return_decl;
 }
 
-auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
+auto Parser::func_decl(ValType type, std::string_view name, std::uint64_t line) -> Decl::Ptr {
     Token lparen = lexer.next_token();
 
     if (symbol_table.size() > 1) {
@@ -199,7 +202,7 @@ auto Parser::func_decl(ValType type, std::string_view name) -> Decl::Ptr {
         return nullptr;
     }
 
-    std::unique_ptr<FuncDecl> return_decl = std::make_unique<FuncDecl>(type, name);
+    std::unique_ptr<FuncDecl> return_decl = std::make_unique<FuncDecl>(type, name, line);
 
     Token look_ahead = lexer.next_token(true);
 
@@ -313,9 +316,9 @@ auto Parser::stmt() -> Stmt::Ptr {
 }
 
 auto Parser::block_stmt() -> BlockStmt::Ptr {
-    lexer.next_token(); // consume "{"
+    std::uint64_t line = lexer.next_token().line; // consume "{"
 
-    BlockStmt::Ptr block = std::make_unique<BlockStmt>();
+    BlockStmt::Ptr block = std::make_unique<BlockStmt>(line);
 
     symbol_table.emplace_back();
     TokenType look_ahead = lexer.next_token(true).type;
@@ -347,6 +350,8 @@ auto Parser::block_stmt() -> BlockStmt::Ptr {
 }
 
 auto Parser::expr_stmt() -> Stmt::Ptr {
+    std::uint64_t line = lexer.next_token(true).line;
+
     Expr::Ptr return_expr = expr();
     if (!return_expr) {
         return nullptr;
@@ -358,11 +363,11 @@ auto Parser::expr_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    return std::make_unique<ExprStmt>(std::move(return_expr));
+    return std::make_unique<ExprStmt>(std::move(return_expr), line);
 }
 
 auto Parser::if_stmt() -> Stmt::Ptr {
-    lexer.next_token(); // consume "if"
+    std::uint64_t line = lexer.next_token().line; // consume "if"
 
     Token lparen = lexer.next_token();
     if (lparen.type != TokenType::LeftParenthesis) {
@@ -387,7 +392,7 @@ auto Parser::if_stmt() -> Stmt::Ptr {
     }
 
     if (lexer.next_token(true).type != TokenType::Else) {
-        return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), nullptr);
+        return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), nullptr, line);
     }
 
     lexer.next_token(); // consume "else"
@@ -397,11 +402,11 @@ auto Parser::if_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body));
+    return std::make_unique<IfStmt>(std::move(cond), std::move(if_body), std::move(else_body), line);
 }
 
 auto Parser::for_stmt() -> Stmt::Ptr {
-    lexer.next_token(); // consume "for"
+    std::uint64_t line = lexer.next_token().line; // consume "for"
 
     Token lparen = lexer.next_token();
     if (lparen.type != TokenType::LeftParenthesis) {
@@ -487,11 +492,11 @@ auto Parser::for_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(iter), std::move(body));
+    return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(iter), std::move(body), line);
 }
 
 auto Parser::while_stmt() -> Stmt::Ptr {
-    lexer.next_token(); // consume "while"
+    std::uint64_t line = lexer.next_token().line; // consume "while"
 
     Token lparen = lexer.next_token();
     if (lparen.type != TokenType::LeftParenthesis) {
@@ -515,16 +520,16 @@ auto Parser::while_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    return std::make_unique<WhileStmt>(std::move(cond), std::move(body));
+    return std::make_unique<WhileStmt>(std::move(cond), std::move(body), line);
 }
 
 auto Parser::return_stmt() -> Stmt::Ptr {
-    lexer.next_token(); // consume "return"
+    std::uint64_t line = lexer.next_token().line; // consume "return"
 
     if (lexer.next_token(true).type == TokenType::Semicolon) {
         lexer.next_token(); // consume ";"
 
-        return std::make_unique<ReturnStmt>(nullptr);
+        return std::make_unique<ReturnStmt>(nullptr, line);
     }
 
     Expr::Ptr return_expr = expr();
@@ -538,7 +543,7 @@ auto Parser::return_stmt() -> Stmt::Ptr {
         return nullptr;
     }
 
-    return std::make_unique<ReturnStmt>(std::move(return_expr));
+    return std::make_unique<ReturnStmt>(std::move(return_expr), line);
 }
 
 // expr
@@ -576,6 +581,8 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
         return_expr = std::move(paren_expr.value());
     }
     else if (tok.is_oper()) {
+        std::uint64_t line = tok.line;
+
         std::optional<std::uint64_t> result = prefix_bp(op_type_convert(tok.type));
         if (!result.has_value()) {
             make_error("Expect prefix operator", tok);
@@ -587,21 +594,23 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
             return nullptr;
         }
 
-        return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()));
+        return_expr = std::make_unique<UnaryExpr>(op_type_convert(tok.type), std::move(rhs.value()), line);
     }
     else if (tok.is_value()) {
+        std::uint64_t line = tok.line;
+
         switch (tok.type) {
         case TokenType::String:
-            return_expr = std::make_unique<ConstExpr>(ValType::Str, tok.lexeme);
+            return_expr = std::make_unique<ConstExpr>(ValType::Str, tok.lexeme, line);
             break;
         case TokenType::Integer:
-            return_expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme);
+            return_expr = std::make_unique<ConstExpr>(ValType::Int, tok.lexeme, line);
             break;
         case TokenType::Floating:
-            return_expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme);
+            return_expr = std::make_unique<ConstExpr>(ValType::Flt, tok.lexeme, line);
             break;
         case TokenType::Identifier:
-            return_expr = std::make_unique<LValue>(tok.lexeme);
+            return_expr = std::make_unique<LValue>(tok.lexeme, line);
             break;
         default:
             // unreachable
@@ -614,6 +623,8 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
 
     while (true) {
         Token op = lexer.next_token(true);
+        std::uint64_t line = op.line;
+
         if (op.is_delim() || (is_in_list && op.type == TokenType::Comma)) {
             break;
         }
@@ -642,7 +653,7 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
             return nullptr;
         }
 
-        if (try_func(op, return_expr)) {
+        if (try_func(op, return_expr, line)) {
             continue;
         }
         else if (has_error) {
@@ -655,7 +666,7 @@ auto Parser::expr_bp(std::uint64_t min_bp, bool is_in_list) -> Expr::Ptr {
         }
 
         return_expr =
-            std::make_unique<BinExpr>(op_type_convert(op.type), std::move(return_expr), std::move(rhs.value()));
+            std::make_unique<BinExpr>(op_type_convert(op.type), std::move(return_expr), std::move(rhs.value()), line);
     }
 
     return return_expr;
@@ -694,7 +705,7 @@ auto Parser::try_index(Token &op, Expr::Ptr &lhs) -> bool {
     return true;
 }
 
-auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
+auto Parser::try_func(Token &op, Expr::Ptr &lhs, std::uint64_t line) -> bool {
     if (op_type_convert(op.type) != OpType::Prn) {
         return false;
     }
@@ -706,7 +717,7 @@ auto Parser::try_func(Token &op, Expr::Ptr &lhs) -> bool {
         return false;
     }
 
-    lhs = std::make_unique<FuncExpr>(lvalue->name);
+    lhs = std::make_unique<FuncExpr>(lvalue->name, line);
 
     if (lexer.next_token(true).type == TokenType::RightParenthesis) {
         lexer.next_token();

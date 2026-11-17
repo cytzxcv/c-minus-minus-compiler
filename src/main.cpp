@@ -1,6 +1,7 @@
 #include "lexer.hpp"
 #include "node.hpp"
 #include "parser.hpp"
+#include "static_analyzer.hpp"
 
 #include <cerrno>
 #include <filesystem>
@@ -48,8 +49,14 @@ auto main(int argc, char **argv) -> int {
 
         return 6;
     }
-    else {
-        program->print();
+
+    StaticAnalyzer static_analyzer = StaticAnalyzer();
+    static_analyzer.analyze(program);
+
+    if (static_analyzer.has_error) {
+        std::print("{}", static_analyzer.error);
+
+        return 7;
     }
 
     return 0;

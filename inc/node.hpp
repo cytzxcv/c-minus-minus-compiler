@@ -68,11 +68,12 @@ public:
     using Ptr = std::unique_ptr<Decl>;
 
     DeclType decl_type;
+    std::uint64_t line;
 
     virtual ~Decl() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 
-    Decl(DeclType);
+    Decl(DeclType, std::uint64_t);
 };
 
 class Stmt {
@@ -80,11 +81,12 @@ public:
     using Ptr = std::unique_ptr<Stmt>;
 
     StmtType stmt_type;
+    std::uint64_t line;
 
     virtual ~Stmt() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 
-    Stmt(StmtType);
+    Stmt(StmtType, std::uint64_t);
 };
 
 class Expr {
@@ -92,11 +94,12 @@ public:
     using Ptr = std::unique_ptr<Expr>;
 
     ExprType expr_type;
+    std::uint64_t line;
 
     virtual ~Expr() = default;
     virtual auto print(std::uint64_t indent = 0) const -> void = 0;
 
-    Expr(ExprType);
+    Expr(ExprType, std::uint64_t);
 };
 
 class Prog {
@@ -117,7 +120,7 @@ public:
     std::string_view name;
     std::vector<Expr::Ptr> dims;
 
-    LValue(std::string_view);
+    LValue(std::string_view, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -129,7 +132,7 @@ public:
 
     std::vector<Item> items;
 
-    BlockStmt();
+    BlockStmt(std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -149,7 +152,7 @@ public:
     ValType type;
     std::vector<Var> vars;
 
-    VarDecl(ValType);
+    VarDecl(ValType, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -159,7 +162,7 @@ public:
     ValType type;
     std::string_view name;
 
-    TypeDecl(ValType, std::string_view);
+    TypeDecl(ValType, std::string_view, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -179,7 +182,7 @@ public:
     std::vector<Param> params;
     BlockStmt::Ptr body;
 
-    FuncDecl(ValType, std::string_view);
+    FuncDecl(ValType, std::string_view, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -188,7 +191,7 @@ class ExprStmt : public Stmt {
 public:
     Expr::Ptr expr;
 
-    ExprStmt(Expr::Ptr);
+    ExprStmt(Expr::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -198,7 +201,7 @@ public:
     Expr::Ptr cond;
     Stmt::Ptr if_branch, else_branch;
 
-    IfStmt(Expr::Ptr, Stmt::Ptr, Stmt::Ptr);
+    IfStmt(Expr::Ptr, Stmt::Ptr, Stmt::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -211,7 +214,7 @@ public:
     Expr::Ptr cond, iter;
     Stmt::Ptr stmt;
 
-    ForStmt(Init, Expr::Ptr, Expr::Ptr, Stmt::Ptr);
+    ForStmt(Init, Expr::Ptr, Expr::Ptr, Stmt::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -221,7 +224,7 @@ public:
     Expr::Ptr cond;
     Stmt::Ptr stmt;
 
-    WhileStmt(Expr::Ptr, Stmt::Ptr);
+    WhileStmt(Expr::Ptr, Stmt::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -230,7 +233,7 @@ class ReturnStmt : public Stmt {
 public:
     Expr::Ptr expr;
 
-    ReturnStmt(Expr::Ptr);
+    ReturnStmt(Expr::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -240,7 +243,7 @@ public:
     ValType type;
     std::string_view value;
 
-    ConstExpr(ValType, std::string_view);
+    ConstExpr(ValType, std::string_view, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -250,7 +253,7 @@ public:
     OpType op;
     Expr::Ptr lhs, rhs;
 
-    BinExpr(OpType, Expr::Ptr, Expr::Ptr);
+    BinExpr(OpType, Expr::Ptr, Expr::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -260,7 +263,7 @@ public:
     OpType op;
     Expr::Ptr rhs;
 
-    UnaryExpr(OpType, Expr::Ptr);
+    UnaryExpr(OpType, Expr::Ptr, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };
@@ -270,7 +273,7 @@ public:
     std::string_view name;
     std::vector<Expr::Ptr> args;
 
-    FuncExpr(std::string_view);
+    FuncExpr(std::string_view, std::uint64_t);
 
     auto print(std::uint64_t) const -> void override;
 };

@@ -20,27 +20,31 @@ void StaticAnalyzer::analyze(Prog::Ptr &prog) {
         switch (decl->decl_type) {
         case DeclType::Type:
             type_decl(decl);
+            break;
         case DeclType::Var:
+            var_decl(decl);
+            break;
         case DeclType::Func:
+            break;
         }
     }
 }
 
-void StaticAnalyzer::make_error(std::string error_str) {
+void StaticAnalyzer::make_error(std::string error_str, std::uint64_t line) {
     has_error = true;
-    error += error_str + "\n";
+    error += std::format("{} at line {}\n", error_str, line);
 }
 
 void StaticAnalyzer::type_decl(Decl::Ptr &decl) {
     TypeDecl *ptr = dynamic_cast<TypeDecl *>(decl.get());
 
     if (symbol_table.back().contains(ptr->name)) {
-        make_error(std::format("Redeclaration of \"{}\"", ptr->name));
+        make_error(std::format("Redeclaration of \"{}\"", ptr->name), ptr->line);
 
         return;
     }
 
-    symbol_table.back()[ptr->name] = SymbolProperty(SymbolType::Type, ptr->type, 0);
+    symbol_table.back().emplace(ptr->name, SymbolProperty(SymbolType::Type, ptr->type, 0));
 }
 
 void StaticAnalyzer::var_decl(Decl::Ptr &decl) {
@@ -48,12 +52,12 @@ void StaticAnalyzer::var_decl(Decl::Ptr &decl) {
 
     for (VarDecl::Var &var : ptr->vars) {
         if (symbol_table.back().contains(var.lvalue->name)) {
-            make_error(std::format("Redeclaration of \"{}\"", var.lvalue->name));
+            make_error(std::format("Redeclaration of \"{}\"", var.lvalue->name), var.lvalue->line);
 
             continue;
         }
         else if (var.lvalue->dims.size() > 0 && var.expr != nullptr) {
-            make_error(std::format("Initialization not supported for \"{}\"", var.lvalue->name));
+            make_error(std::format("Initialization is not supported for \"{}\"", var.lvalue->name), var.lvalue->line);
 
             continue;
         }
@@ -63,6 +67,7 @@ void StaticAnalyzer::var_decl(Decl::Ptr &decl) {
             // continue;
         }
 
-        symbol_table.back()[var.lvalue->name] = SymbolProperty(SymbolType::Var, ptr->type, var.lvalue->dims.size());
+        symbol_table.back().emplace(var.lvalue->name,
+                                    SymbolProperty(SymbolType::Var, ptr->type, var.lvalue->dims.size()));
     }
 }

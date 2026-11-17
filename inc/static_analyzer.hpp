@@ -28,7 +28,7 @@ private:
     std::vector<std::unordered_map<std::string_view, SymbolProperty>> symbol_table;
     std::unordered_map<std::string_view, std::uint64_t> function_table;
 
-    void make_error(std::string);
+    void make_error(std::string, std::uint64_t);
 
     void type_decl(Decl::Ptr &);
     void var_decl(Decl::Ptr &);
