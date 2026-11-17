@@ -39,12 +39,12 @@ auto main(int argc, char **argv) -> int {
 
     Prog::Ptr program = parser.parse();
     if (!program && lexer.has_error) {
-        println("{}", lexer.error);
+        std::print("{}", lexer.error);
 
         return 5;
     }
     else if (!program) {
-        std::println("{}", parser.error);
+        std::print("{}", parser.error);
 
         return 6;
     }

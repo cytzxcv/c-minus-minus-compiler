@@ -65,7 +65,7 @@ auto Lexer::make_error() -> Token {
 
 auto Lexer::make_error(std::string error_message) -> Token {
     has_error = true;
-    error = std::format("{} at {}:{}", error_message, line, column);
+    error = std::format("{} at {}:{}\n", error_message, line, column);
     return Token(TokenType::Err, std::string_view(error), line, column);
 }
 

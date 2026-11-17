@@ -31,7 +31,7 @@ auto Parser::parse() -> Prog::Ptr {
 
 auto Parser::make_error(std::string err, Token &tok) -> void {
     has_error = true;
-    error = std::format("{} at {}:{}", err, tok.line, tok.column);
+    error = std::format("{} at {}:{}\n", err, tok.line, tok.column);
 }
 
 auto Parser::block_item() -> BlockStmt::Item {
