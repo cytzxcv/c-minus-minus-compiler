@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <format>
+#include <variant>
 #include <vector>
 
 constexpr EvalType val_to_eval(ValType val_type) {
@@ -42,13 +43,13 @@ void StaticAnalyzer::analyze(Prog::Ptr &prog) {
     for (Decl::Ptr &decl : prog->decls) {
         switch (decl->decl_type) {
         case DeclType::Type:
-            type_decl(decl);
+            type_decl(dynamic_cast<TypeDecl *>(decl.get()));
             break;
         case DeclType::Var:
-            var_decl(decl);
+            var_decl(dynamic_cast<VarDecl *>(decl.get()));
             break;
         case DeclType::Func:
-            func_decl(decl);
+            func_decl(dynamic_cast<FuncDecl *>(decl.get()));
             break;
         }
     }
@@ -59,22 +60,18 @@ void StaticAnalyzer::analyze(Prog::Ptr &prog) {
     }
 }
 
-void StaticAnalyzer::type_decl(Decl::Ptr &decl) {
-    TypeDecl *ptr = dynamic_cast<TypeDecl *>(decl.get());
-
-    if (symbol_table.back().contains(ptr->name)) {
-        make_error(std::format("Redeclaration of \"{}\"", ptr->name), ptr->line);
+void StaticAnalyzer::type_decl(TypeDecl *type_node) {
+    if (symbol_table.back().contains(type_node->name)) {
+        make_error(std::format("Redeclaration of \"{}\"", type_node->name), type_node->line);
 
         return;
     }
 
-    symbol_table.back().emplace(ptr->name, SymbolProperty(SymbolType::Type, val_to_eval(ptr->type), 0));
+    symbol_table.back().emplace(type_node->name, SymbolProperty(SymbolType::Type, val_to_eval(type_node->type), 0));
 }
 
-void StaticAnalyzer::var_decl(Decl::Ptr &decl) {
-    VarDecl *ptr = dynamic_cast<VarDecl *>(decl.get());
-
-    for (VarDecl::Var &var : ptr->vars) {
+void StaticAnalyzer::var_decl(VarDecl *var_node) {
+    for (VarDecl::Var &var : var_node->vars) {
         if (symbol_table.back().contains(var.lvalue->name)) {
             make_error(std::format("Redeclaration of \"{}\"", var.lvalue->name), var.lvalue->line);
 
@@ -117,23 +114,21 @@ void StaticAnalyzer::var_decl(Decl::Ptr &decl) {
             // continue;
         }
 
-        symbol_table.back().emplace(var.lvalue->name,
-                                    SymbolProperty(SymbolType::Var, val_to_eval(ptr->type), var.lvalue->dims.size()));
+        symbol_table.back().emplace(
+            var.lvalue->name, SymbolProperty(SymbolType::Var, val_to_eval(var_node->type), var.lvalue->dims.size()));
     }
 }
 
-void StaticAnalyzer::func_decl(Decl::Ptr &decl) {
-    FuncDecl *ptr = dynamic_cast<FuncDecl *>(decl.get());
-
-    if (symbol_table.back().contains(ptr->name)) {
-        make_error(std::format("Redeclaration of \"{}\"", ptr->name), ptr->line);
+void StaticAnalyzer::func_decl(FuncDecl *func_node) {
+    if (symbol_table.back().contains(func_node->name)) {
+        make_error(std::format("Redeclaration of \"{}\"", func_node->name), func_node->line);
 
         return;
     }
 
     std::unordered_map<std::string_view, SymbolProperty> new_scope_table;
 
-    for (FuncDecl::Param &param : ptr->params) {
+    for (FuncDecl::Param &param : func_node->params) {
         if (new_scope_table.contains(param.lvalue->name)) {
             make_error(std::format("Redeclaration of \"{}\"", param.lvalue->name), param.lvalue->line);
 
@@ -165,17 +160,56 @@ void StaticAnalyzer::func_decl(Decl::Ptr &decl) {
                                 SymbolProperty(SymbolType::Var, val_to_eval(param.type), param.lvalue->dims.size()));
     }
 
-    symbol_table.back().emplace(ptr->name,
-                                SymbolProperty(SymbolType::Func, val_to_eval(ptr->type), ptr->params.size()));
+    symbol_table.back().emplace(
+        func_node->name, SymbolProperty(SymbolType::Func, val_to_eval(func_node->type), func_node->params.size()));
 
-    function_table[ptr->name] = {};
-    for (FuncDecl::Param &param : ptr->params) {
-        function_table[ptr->name].emplace_back(val_to_eval(param.type));
+    function_table[func_node->name] = {};
+    for (FuncDecl::Param &param : func_node->params) {
+        function_table[func_node->name].emplace_back(val_to_eval(param.type));
     }
 
     symbol_table.emplace_back(new_scope_table);
 
-    // block_stmt(ptr->body)
+    block_stmt(func_node->body.get());
 
     symbol_table.pop_back();
+}
+
+void StaticAnalyzer::block_stmt(BlockStmt *block_node) {
+    for (BlockStmt::Item &item : block_node->items) {
+        if (std::holds_alternative<Stmt::Ptr>(item)) {
+            Stmt::Ptr &stmt = std::get<Stmt::Ptr>(item);
+
+            switch (stmt->stmt_type) {
+            case StmtType::Block:
+                block_stmt(dynamic_cast<BlockStmt *>(stmt.get()));
+                break;
+            case StmtType::Expr:
+                break;
+            case StmtType::For:
+                break;
+            case StmtType::If:
+                break;
+            case StmtType::While:
+                break;
+            case StmtType::Return:
+                break;
+            }
+        }
+        else {
+            Decl::Ptr &decl = std::get<Decl::Ptr>(item);
+
+            switch (decl->decl_type) {
+            case DeclType::Type:
+                type_decl(dynamic_cast<TypeDecl *>(decl.get()));
+                break;
+            case DeclType::Var:
+                var_decl(dynamic_cast<VarDecl *>(decl.get()));
+                break;
+            case DeclType::Func:
+                func_decl(dynamic_cast<FuncDecl *>(decl.get()));
+                break;
+            }
+        }
+    }
 }

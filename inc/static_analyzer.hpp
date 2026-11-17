@@ -41,9 +41,11 @@ private:
 
     void make_error(std::string, std::uint64_t);
 
-    void type_decl(Decl::Ptr &);
-    void var_decl(Decl::Ptr &);
-    void func_decl(Decl::Ptr &);
+    void type_decl(TypeDecl *);
+    void var_decl(VarDecl *);
+    void func_decl(FuncDecl *);
+
+    void block_stmt(BlockStmt *);
 
 public:
     bool has_error;
