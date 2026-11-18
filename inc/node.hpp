@@ -61,7 +61,7 @@ enum class ExprType {
 auto op_type_convert(TokenType) -> OpType;
 
 constexpr auto val_type_to_string(ValType) -> std::string_view;
-constexpr auto op_type_to_string(OpType) -> std::string_view;
+auto op_type_to_string(OpType) -> std::string_view;
 
 class Decl {
 public:

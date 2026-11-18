@@ -82,7 +82,7 @@ constexpr auto val_type_to_string(ValType val_type) -> std::string_view {
     }
 }
 
-constexpr auto op_type_to_string(OpType op_type) -> std::string_view {
+auto op_type_to_string(OpType op_type) -> std::string_view {
     switch (op_type) {
     case OpType::Add:
         return "+";
