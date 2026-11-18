@@ -41,22 +41,26 @@ void StaticAnalyzer::make_error(std::string error_str, std::uint64_t line) {
 
 void StaticAnalyzer::analyze(Prog::Ptr &prog) {
     for (Decl::Ptr &decl : prog->decls) {
-        switch (decl->decl_type) {
-        case DeclType::Type:
-            type_decl(dynamic_cast<TypeDecl *>(decl.get()));
-            break;
-        case DeclType::Var:
-            var_decl(dynamic_cast<VarDecl *>(decl.get()));
-            break;
-        case DeclType::Func:
-            func_decl(dynamic_cast<FuncDecl *>(decl.get()));
-            break;
-        }
+        analyze_decl(decl);
     }
 
     if (function_table.find("main") == function_table.end()) {
         has_error = true;
         error += "No main function\n";
+    }
+}
+
+void StaticAnalyzer::analyze_decl(Decl::Ptr &decl) {
+    switch (decl->decl_type) {
+    case DeclType::Type:
+        type_decl(dynamic_cast<TypeDecl *>(decl.get()));
+        break;
+    case DeclType::Var:
+        var_decl(dynamic_cast<VarDecl *>(decl.get()));
+        break;
+    case DeclType::Func:
+        func_decl(dynamic_cast<FuncDecl *>(decl.get()));
+        break;
     }
 }
 
@@ -175,41 +179,46 @@ void StaticAnalyzer::func_decl(FuncDecl *func_node) {
     symbol_table.pop_back();
 }
 
+void StaticAnalyzer::analyze_stmt(Stmt::Ptr &stmt) {
+    switch (stmt->stmt_type) {
+    case StmtType::Block:
+        block_stmt(dynamic_cast<BlockStmt *>(stmt.get()));
+        break;
+    case StmtType::Expr:
+        expr_stmt(dynamic_cast<ExprStmt *>(stmt.get()));
+        break;
+    case StmtType::If:
+        if_stmt(dynamic_cast<IfStmt *>(stmt.get()));
+        break;
+    case StmtType::For:
+        for_stmt(dynamic_cast<ForStmt *>(stmt.get()));
+        break;
+    case StmtType::While:
+        while_stmt(dynamic_cast<WhileStmt *>(stmt.get()));
+        break;
+    case StmtType::Return:
+        return_stmt(dynamic_cast<ReturnStmt *>(stmt.get()));
+        break;
+    }
+}
+
 void StaticAnalyzer::block_stmt(BlockStmt *block_node) {
     for (BlockStmt::Item &item : block_node->items) {
         if (std::holds_alternative<Stmt::Ptr>(item)) {
-            Stmt::Ptr &stmt = std::get<Stmt::Ptr>(item);
-
-            switch (stmt->stmt_type) {
-            case StmtType::Block:
-                block_stmt(dynamic_cast<BlockStmt *>(stmt.get()));
-                break;
-            case StmtType::Expr:
-                break;
-            case StmtType::For:
-                break;
-            case StmtType::If:
-                break;
-            case StmtType::While:
-                break;
-            case StmtType::Return:
-                break;
-            }
+            analyze_stmt(std::get<Stmt::Ptr>(item));
         }
         else {
-            Decl::Ptr &decl = std::get<Decl::Ptr>(item);
-
-            switch (decl->decl_type) {
-            case DeclType::Type:
-                type_decl(dynamic_cast<TypeDecl *>(decl.get()));
-                break;
-            case DeclType::Var:
-                var_decl(dynamic_cast<VarDecl *>(decl.get()));
-                break;
-            case DeclType::Func:
-                func_decl(dynamic_cast<FuncDecl *>(decl.get()));
-                break;
-            }
+            analyze_decl(std::get<Decl::Ptr>(item));
         }
     }
 }
+
+void StaticAnalyzer::expr_stmt(ExprStmt *expr_node) { }
+
+void StaticAnalyzer::if_stmt(IfStmt *if_node) { }
+
+void StaticAnalyzer::for_stmt(ForStmt *for_node) { }
+
+void StaticAnalyzer::while_stmt(WhileStmt *while_node) { }
+
+void StaticAnalyzer::return_stmt(ReturnStmt *return_node) { }
