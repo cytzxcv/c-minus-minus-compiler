@@ -28,7 +28,7 @@ auto main(int argc, char **argv) -> int {
         std::string arg = argv[i];
 
         if (arg.length() == 0) {
-            std::println(stderr, "Command argument cannot be empty");
+            std::println(stderr, "Error: Command argument cannot be empty");
 
             return 1;
         }
@@ -53,7 +53,7 @@ auto main(int argc, char **argv) -> int {
             continue;
         }
         else if (arg[0] == '-') {
-            std::println(stderr, "Unknown option: {}", arg);
+            std::println(stderr, "Error: Unknown option {}", arg);
 
             return 2;
         }
